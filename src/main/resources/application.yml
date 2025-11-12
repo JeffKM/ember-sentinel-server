@@ -1,3 +1,18 @@
 spring:
   application:
     name: ember-sentinel-server
+
+  config:
+    import:
+      - optional:classpath:secrets/secret-dev.yml
+      - optional:classpath:secrets/secret-prod.yml
+
+  profiles:
+    default: dev
+
+  jpa:
+    show-sql: true
+    properties:
+      hibernate:
+        format_sql: true
+        ddl-auto: update
