@@ -15,4 +15,41 @@ spring:
     properties:
       hibernate:
         format_sql: true
-        ddl-auto: update
+    hibernate:
+      ddl-auto: update
+
+# (2) 새로 추가된 SpringDoc (Swagger) 설정
+springdoc:
+  api-docs:
+    path: /v3/api-docs # API 문서 JSON의 경로 (기본값)
+  swagger-ui:
+    path: /swagger-ui.html # Swagger UI 페이지 경로 (기본값)
+
+  info:
+    title: "Ember Sentinel API"
+    description: "Ember Sentinel (화재 감지) 서버 API 명세서"
+    version: "v1.0.0"
+
+  # Swagger UI에 JWT "Authorize" 버튼 추가
+  components:
+    securitySchemes:
+      # 'bearerAuth'는 이 설정의 식별자(이름)입니다.
+      bearerAuth:
+        type: http
+        scheme: bearer
+        bearerFormat: JWT
+        in: header
+        name: Authorization
+
+  # 모든 API에 'bearerAuth'를 적용
+  security:
+    - bearerAuth: []
+
+
+oauth:
+  google:
+    # Google 사용자 정보 조회 API
+    userinfo-uri: https://www.googleapis.com/oauth2/v3/userinfo
+  kakao:
+    # Kakao 사용자 정보 조회 API
+    userinfo-uri: https://kapi.kakao.com/v2/user/me
