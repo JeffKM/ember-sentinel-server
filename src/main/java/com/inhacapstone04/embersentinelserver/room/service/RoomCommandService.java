@@ -57,7 +57,8 @@ public class RoomCommandService {
 
         // 4. UserRoomMembership 엔티티 생성
         UserRoomMembership membership = new UserRoomMembership(user, savedRoom);
-        membership.setRole(MembershipRole.EDITOR); // [요청사항] EDITOR로 설정
+        membership.setRole(MembershipRole.EDITOR); // EDITOR로 설정
+        savedRoom.getUserMemberships().add(membership); // 양방향 연관관계 설정 (1차 캐시 일관성 유지)
 
         // [DB 저장 2] Membership 저장 (두 저장이 하나의 트랜잭션으로 묶임)
         membershipRepository.save(membership);
