@@ -30,7 +30,7 @@ public class RoomQueryController {
     @GetMapping("/list/me")
     public ResponseEntity<PageResponse<SingleRoomResponse>> getMyRoomsWithDefault(
             @AuthorizedUser Long userId,
-            @PageableDefault(page = 1, size = 5) Pageable pageable
+            @PageableDefault(page = 1, size = 10) Pageable pageable
             // page= 파라미터가 없으면 1
             // size= 파라미터가 없으면 5
             // page 번호는 1부터 시작
