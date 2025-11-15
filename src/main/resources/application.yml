@@ -17,6 +17,10 @@ spring:
         format_sql: true
     hibernate:
       ddl-auto: update
+  data:
+    web:
+      pageable:
+        one-indexed-parameters: true
 
 # (2) 새로 추가된 SpringDoc (Swagger) 설정
 springdoc:
