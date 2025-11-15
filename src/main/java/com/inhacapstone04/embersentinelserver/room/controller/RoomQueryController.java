@@ -3,6 +3,7 @@ package com.inhacapstone04.embersentinelserver.room.controller;
 import com.inhacapstone04.embersentinelserver.common.resolver.AuthorizedUser;
 import com.inhacapstone04.embersentinelserver.common.response.PageResponse;
 import com.inhacapstone04.embersentinelserver.room.dto.RoomDashboardResponse;
+import com.inhacapstone04.embersentinelserver.room.dto.RoomDetailResponse;
 import com.inhacapstone04.embersentinelserver.room.dto.RoomListSummaryRequest;
 import com.inhacapstone04.embersentinelserver.room.dto.SingleRoomResponse;
 import com.inhacapstone04.embersentinelserver.room.service.RoomQueryService;
@@ -31,9 +32,9 @@ public class RoomQueryController {
     @GetMapping("/list/me")
     public ResponseEntity<PageResponse<SingleRoomResponse>> getMyRoomsWithDefault(
             @AuthorizedUser Long userId,
-            @PageableDefault(page = 1, size = 10) Pageable pageable
+            @PageableDefault(page = 1) Pageable pageable
             // page= 파라미터가 없으면 1
-            // size= 파라미터가 없으면 5
+            // size= 파라미터가 없으면 10
             // page 번호는 1부터 시작
     ) {
 
@@ -42,7 +43,7 @@ public class RoomQueryController {
     }
 
     /**
-     * [추가] (POST) /room/list/me/summary
+     * (POST) /room/list/me/summary
      * 사용자가 요청한 Room 목록에 대한 통계(카메라, 화재)를 조회합니다.
      * (요청한 Room 목록 전부에 대한 멤버십 권한이 있는지 검증합니다)
      *
@@ -56,6 +57,24 @@ public class RoomQueryController {
             @Valid @RequestBody RoomListSummaryRequest request
     ) {
         RoomDashboardResponse response = roomQueryService.getRoomStatistics(userId, request.roomIds());
+        return ResponseEntity.ok(response);
+    }
+
+    /**
+     * (GET) /room/{roomId}/detail
+     * 특정 Room의 상세 정보(멤버, 카메라 및 화재 상태)를 조회합니다.
+     * (서비스 내부에서 userId와 roomId로 권한 검증을 수행합니다)
+     *
+     * @param userId (@AuthorizedUser로 주입된 유저 ID)
+     * @param roomId (조회할 Room의 ID)
+     * @return ResponseEntity<RoomDetailResponse> (200 OK)
+     */
+    @GetMapping("/{roomId}/detail")
+    public ResponseEntity<RoomDetailResponse> getRoomDetail(
+            @AuthorizedUser Long userId,
+            @PathVariable("roomId") Long roomId // URL 경로에서 {roomId} 값을 추출
+    ) {
+        RoomDetailResponse response = roomQueryService.getRoomDetail(userId, roomId);
         return ResponseEntity.ok(response);
     }
 }
