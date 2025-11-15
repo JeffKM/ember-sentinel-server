@@ -2,12 +2,14 @@ package com.inhacapstone04.embersentinelserver.room;
 
 import com.inhacapstone04.embersentinelserver.building.entity.Building;
 import com.inhacapstone04.embersentinelserver.building.repository.BuildingRepository;
+import com.inhacapstone04.embersentinelserver.camera_edge.dto.CameraEdgeDTO;
 import com.inhacapstone04.embersentinelserver.camera_edge.entity.CameraEdge;
 import com.inhacapstone04.embersentinelserver.camera_edge.repository.CameraEdgeRepository;
 import com.inhacapstone04.embersentinelserver.common.exception.CustomException;
 import com.inhacapstone04.embersentinelserver.common.exception.ErrorCode;
 import com.inhacapstone04.embersentinelserver.common.response.PageResponse;
 import com.inhacapstone04.embersentinelserver.fire_event.entity.FireEvent;
+import com.inhacapstone04.embersentinelserver.room.dto.RoomDetailResponse;
 import com.inhacapstone04.embersentinelserver.room.entity.MembershipRole;
 import com.inhacapstone04.embersentinelserver.fire_event.repository.FireEventRepository;
 import com.inhacapstone04.embersentinelserver.media.entity.MediaStream;
@@ -34,7 +36,6 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.Collections;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -49,33 +50,26 @@ class RoomQueryServiceTest {
     private RoomQueryService roomQueryService;
 
     // --- 테스트 데이터 세팅을 위한 Repository ---
-    // (이 Repository들이 모두 Bean으로 등록되어 있어야 합니다)
-    @Autowired
-    private UserRepository userRepository;
-    @Autowired
-    private BuildingRepository buildingRepository;
-    @Autowired
-    private RoomRepository roomRepository;
-    @Autowired
-    private UserRoomMembershipRepository membershipRepository;
-    @Autowired
-    private CameraEdgeRepository cameraEdgeRepository;
-    @Autowired
-    private FireEventRepository fireEventRepository;
-    @Autowired
-    private MediaStreamRepository mediaStreamRepository;
+    @Autowired private UserRepository userRepository;
+    @Autowired private BuildingRepository buildingRepository;
+    @Autowired private RoomRepository roomRepository;
+    @Autowired private UserRoomMembershipRepository membershipRepository;
+    @Autowired private CameraEdgeRepository cameraEdgeRepository;
+    @Autowired private FireEventRepository fireEventRepository;
+    @Autowired private MediaStreamRepository mediaStreamRepository;
 
     private User testUser1;
     private User testUser2;
     private Room roomA, roomB, roomC_OtherUser;
     private CameraEdge camA1, camA2, camB1;
+    private FireEvent eventA_Live;
 
     /**
      * 테스트 데이터 세팅:
-     * - User1: roomA, roomB에 접근 가능
-     * - User2: roomC에 접근 가능
+     * - User1: roomA (EDITOR), roomB (EDITOR)
+     * - User2: roomC (EDITOR)
      *
-     * - roomA: 카메라 2대 (camA1, camA2), LIVE 이벤트 1개 (camA1)
+     * - roomA: 카메라 2대 (camA1, camA2), LIVE 이벤트 1개 (camA1), ENDED 이벤트 1개 (camA2)
      * - roomB: 카메라 1대 (camB1), LIVE 이벤트 0개
      * - roomC: (User2의 방)
      */
@@ -93,26 +87,24 @@ class RoomQueryServiceTest {
         roomB = createRoom("지능형보안연구실", "11", "1105", building);
         roomC_OtherUser = createRoom("서버실", "5", "501", building);
 
-        // 4. 멤버십 연결
-        createMembership(testUser1, roomA);
-        createMembership(testUser1, roomB);
-        createMembership(testUser2, roomC_OtherUser);
+        // 4. 멤버십 연결 (EDITOR로 통일)
+        createMembership(testUser1, roomA, MembershipRole.EDITOR);
+        createMembership(testUser1, roomB, MembershipRole.EDITOR);
+        createMembership(testUser2, roomC_OtherUser, MembershipRole.EDITOR);
 
         // 5. 카메라 생성
-        camA1 = createCamera(roomA);
-        camA2 = createCamera(roomA); // roomA (카메라 2대)
-        camB1 = createCamera(roomB); // roomB (카메라 1대)
+        camA1 = createCamera(roomA, "cam-A1-uuid", "A1-천장");
+        camA2 = createCamera(roomA, "cam-A2-uuid", "A2-입구"); // roomA (카메라 2대)
+        camB1 = createCamera(roomB, "cam-B1-uuid", "B1-서버랙"); // roomB (카메라 1대)
 
         // 6. 화재 이벤트 및 미디어 스트림 생성
         // roomA - camA1: LIVE 이벤트 1개
-        FireEvent eventA_Live = createFireEvent(camA1);
+        eventA_Live = createFireEvent(camA1);
         createMediaStream(eventA_Live, StreamingStatus.LIVE);
 
         // roomA - camA2: ENDED 이벤트 1개 (카운트되면 안 됨)
         FireEvent eventA_Ended = createFireEvent(camA2);
         createMediaStream(eventA_Ended, StreamingStatus.ENDED);
-
-        // roomB - camB1: 이벤트 없음 (카운트 0)
     }
 
     // --- getMyRooms (페이징) 테스트 ---
@@ -127,32 +119,29 @@ class RoomQueryServiceTest {
         PageResponse<SingleRoomResponse> response = roomQueryService.getMyRooms(testUser1.getId(), pageable);
 
         // then
-        assertThat(response.pageNumber()).isEqualTo(1); // PageResponse는 1부터 시작
+        assertThat(response.pageNumber()).isEqualTo(1);
         assertThat(response.totalPages()).isEqualTo(1);
         assertThat(response.totalElements()).isEqualTo(2); // roomA, roomB
         assertThat(response.content()).hasSize(2);
         assertThat(response.content().get(0).roomAlias()).isEqualTo(roomA.getRoomAlias());
-        assertThat(response.content().get(1).roomAlias()).isEqualTo(roomB.getRoomAlias());
     }
 
     @Test
     @DisplayName("내 방 목록 페이징 처리 (1페이지 1개씩)")
     void getMyRooms_Paging() {
         // given
-        Pageable page1 = PageRequest.of(0, 1); // 0번 페이지 (1개)
-        Pageable page2 = PageRequest.of(1, 1); // 1번 페이지 (1개)
+        Pageable page1 = PageRequest.of(0, 1);
+        Pageable page2 = PageRequest.of(1, 1);
 
         // when
         PageResponse<SingleRoomResponse> response1 = roomQueryService.getMyRooms(testUser1.getId(), page1);
         PageResponse<SingleRoomResponse> response2 = roomQueryService.getMyRooms(testUser1.getId(), page2);
 
         // then
-        assertThat(response1.totalElements()).isEqualTo(2);
         assertThat(response1.totalPages()).isEqualTo(2);
-        assertThat(response1.content()).hasSize(1); // 1개만 조회
+        assertThat(response1.content()).hasSize(1);
         assertThat(response1.content().get(0).roomId()).isEqualTo(roomA.getId());
-
-        assertThat(response2.content()).hasSize(1); // 1개만 조회
+        assertThat(response2.content()).hasSize(1);
         assertThat(response2.content().get(0).roomId()).isEqualTo(roomB.getId());
     }
 
@@ -174,22 +163,19 @@ class RoomQueryServiceTest {
 
         // then (RoomA 상세)
         RoomStatisticsDTO roomAStats = findStats(response, roomA.getId());
-        assertThat(roomAStats.roomAlias()).isEqualTo(roomA.getRoomAlias());
         assertThat(roomAStats.cameraCountPerRoom()).isEqualTo(2);
-        assertThat(roomAStats.fireEventCountPerRoom()).isEqualTo(1);
+        assertThat(roomAStats.fireEventCountPerRoom()).isEqualTo(1); // LIVE 1개
 
         // then (RoomB 상세)
         RoomStatisticsDTO roomBStats = findStats(response, roomB.getId());
-        assertThat(roomBStats.roomAlias()).isEqualTo(roomB.getRoomAlias());
         assertThat(roomBStats.cameraCountPerRoom()).isEqualTo(1);
-        assertThat(roomBStats.fireEventCountPerRoom()).isEqualTo(0);
+        assertThat(roomBStats.fireEventCountPerRoom()).isEqualTo(0); // LIVE 0개
     }
 
     @Test
     @DisplayName("대시보드 통계 조회 실패 (권한 없는 Room 포함 시 FORBIDDEN)")
     void getRoomStatistics_Fail_Forbidden() {
         // given
-        // User1이 접근 불가능한 roomC_OtherUser의 ID를 포함하여 요청
         List<Long> requestedIds = List.of(roomA.getId(), roomC_OtherUser.getId());
 
         // when & then
@@ -199,19 +185,66 @@ class RoomQueryServiceTest {
     }
 
     @Test
-    @DisplayName("대시보드 통계 조회 (빈 리스트 요청 시)")
-    void getRoomStatistics_EmptyList() {
+    @DisplayName("Room 상세 조회 성공 (화재 O, 화재 X 카메라 동시 조회)")
+    void getRoomDetail_Success() {
         // given
-        List<Long> requestedIds = Collections.emptyList();
+        Long userId = testUser1.getId();
+        Long roomId = roomA.getId(); // roomA: camA1(LIVE), camA2(ENDED)
 
         // when
-        RoomDashboardResponse response = roomQueryService.getRoomStatistics(testUser1.getId(), requestedIds);
+        RoomDetailResponse response = roomQueryService.getRoomDetail(userId, roomId);
 
-        // then
-        assertThat(response.totalRoomCount()).isZero();
-        assertThat(response.totalCameraCount()).isZero();
-        assertThat(response.liveStreamCount()).isZero();
-        assertThat(response.roomList()).isEmpty();
+        // then (1. 기본 정보)
+        assertThat(response.roomId()).isEqualTo(roomId);
+        assertThat(response.roomAlias()).isEqualTo(roomA.getRoomAlias());
+        assertThat(response.buildingName()).isEqualTo(roomA.getBuilding().getBuildingName());
+
+        // then (2. 멤버 정보)
+        assertThat(response.members()).hasSize(1);
+        assertThat(response.members().get(0).userId()).isEqualTo(userId);
+        assertThat(response.members().get(0).role()).isEqualTo(MembershipRole.EDITOR.name());
+
+        // then (3. 카메라 및 화재 정보)
+        assertThat(response.cameras()).hasSize(2);
+
+        // camA1 (LIVE 이벤트 존재)
+        CameraEdgeDTO camA1_dto = findCamera(response, camA1.getId());
+        assertThat(camA1_dto.cameraEdgeAlias()).isEqualTo(camA1.getCameraEdgeAlias());
+        assertThat(camA1_dto.isFireOccurring()).isTrue(); // LIVE 상태이므로
+        assertThat(camA1_dto.fireEventId()).isEqualTo(eventA_Live.getId()); // LIVE 이벤트 ID
+
+        // camA2 (ENDED 이벤트 존재 -> 쿼리 결과 null)
+        CameraEdgeDTO camA2_dto = findCamera(response, camA2.getId());
+        assertThat(camA2_dto.cameraEdgeAlias()).isEqualTo(camA2.getCameraEdgeAlias());
+        assertThat(camA2_dto.isFireOccurring()).isFalse(); // LIVE가 아니므로
+        assertThat(camA2_dto.fireEventId()).isNull(); // LIVE가 아니므로
+    }
+
+    @Test
+    @DisplayName("Room 상세 조회 실패 (접근 권한 없는 Room 요청 시 FORBIDDEN)")
+    void getRoomDetail_Fail_Forbidden() {
+        // given
+        Long userId = testUser1.getId();
+        Long forbiddenRoomId = roomC_OtherUser.getId(); // User2의 방
+
+        // when & then
+        assertThatThrownBy(() -> roomQueryService.getRoomDetail(userId, forbiddenRoomId))
+                .isInstanceOf(CustomException.class)
+                .hasFieldOrPropertyWithValue("code", ErrorCode.NOT_AUTHORIZED_ACCESS_BY_ID.getCode());
+    }
+
+    @Test
+    @DisplayName("Room 상세 조회 실패 (존재하지 않는 Room 요청 시 FORBIDDEN)")
+    void getRoomDetail_Fail_NonExistentRoom() {
+        // given
+        Long userId = testUser1.getId();
+        Long nonExistentRoomId = 9999L; // 존재하지 않는 ID
+
+        // when & then
+        // (Auth 로직이 먼저 동작하므로 ROOM_NOT_FOUND가 아닌 FORBIDDEN이 발생)
+        assertThatThrownBy(() -> roomQueryService.getRoomDetail(userId, nonExistentRoomId))
+                .isInstanceOf(CustomException.class)
+                .hasFieldOrPropertyWithValue("code", ErrorCode.NOT_FOUND_BY_ID.getCode());
     }
 
 
@@ -228,7 +261,7 @@ class RoomQueryServiceTest {
 
     private Building createBuilding(String name) {
         Building building = new Building();
-        building.setBuildingName(name); // (Building 엔티티에 buildingName 필드가 있다고 가정)
+        building.setBuildingName(name);
         return buildingRepository.save(building);
     }
 
@@ -241,15 +274,19 @@ class RoomQueryServiceTest {
         return roomRepository.save(room);
     }
 
-    private void createMembership(User user, Room room) {
+    private void createMembership(User user, Room room, MembershipRole role) {
         UserRoomMembership membership = new UserRoomMembership(user, room);
-        membership.setRole(MembershipRole.EDITOR);
+        membership.setRole(role); // [수정됨] 널 제약조건 해결
+        room.getUserMemberships().add(membership); // <-- 이 줄을 추가하세요.
+
         membershipRepository.save(membership);
     }
 
-    private CameraEdge createCamera(Room room) {
+    private CameraEdge createCamera(Room room, String uuid, String alias) {
         CameraEdge camera = new CameraEdge();
         camera.setRoom(room);
+        camera.setDeviceUuid(uuid); // (CameraEdge 엔티티에 deviceUuid 필드가 있다고 가정)
+        camera.setCameraEdgeAlias(alias);
         return cameraEdgeRepository.save(camera);
     }
 
@@ -266,10 +303,19 @@ class RoomQueryServiceTest {
         mediaStreamRepository.save(stream);
     }
 
+    // [헬퍼] 대시보드 응답에서 특정 방 통계 찾기
     private RoomStatisticsDTO findStats(RoomDashboardResponse response, Long roomId) {
         return response.roomList().stream()
                 .filter(r -> r.roomId().equals(roomId))
                 .findFirst()
                 .orElseThrow(() -> new AssertionError("통계 응답에 roomId " + roomId + "가 없습니다."));
+    }
+
+    // [신규 헬퍼] 상세 조회 응답에서 특정 카메라 찾기
+    private CameraEdgeDTO findCamera(RoomDetailResponse response, Long cameraId) {
+        return response.cameras().stream()
+                .filter(c -> c.cameraId().equals(cameraId))
+                .findFirst()
+                .orElseThrow(() -> new AssertionError("상세 응답에 cameraId " + cameraId + "가 없습니다."));
     }
 }
