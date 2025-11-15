@@ -23,4 +23,12 @@ public interface UserRoomMembershipRepository extends JpaRepository<UserRoomMemb
             "WHERE m.user.id = :userId " +
             "AND m.room.id IN :roomIds")
     long countValidRoomsForUser(@Param("userId") Long userId, @Param("roomIds") List<Long> roomIds);
+
+    /**
+     * userId와 roomId로 멤버십이 존재하는지 확인 (권한 검증용)
+     * Spring Data JPA가 메서드 이름을 분석하여 쿼리를 생성합니다.
+     *
+     * @return (존재하면 true, 없으면 false)
+     */
+    boolean existsByUser_IdAndRoom_Id(Long userId, Long roomId);
 }

@@ -1,5 +1,6 @@
 package com.inhacapstone04.embersentinelserver.room.repository;
 
+import com.inhacapstone04.embersentinelserver.camera_edge.dto.CameraEdgeDTO;
 import com.inhacapstone04.embersentinelserver.media.entity.StreamingStatus;
 import com.inhacapstone04.embersentinelserver.room.dto.RoomStatisticsDTO;
 import com.inhacapstone04.embersentinelserver.room.entity.Room;
@@ -11,6 +12,7 @@ import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
+import java.util.Optional;
 
 @Repository
 public interface RoomRepository extends JpaRepository<Room, Long> {
@@ -47,7 +49,7 @@ public interface RoomRepository extends JpaRepository<Room, Long> {
     Page<Room> findRoomsByUserId(@Param("userId") Long userId, Pageable pageable);
 
     /**
-     * [추가] roomId 목록을 기반으로 Room 통계 정보를 조회합니다.
+     * roomId 목록을 기반으로 Room 통계 정보를 조회합니다.
      * N+1 문제를 해결하기 위해 DTO로 직접 조회합니다.
      *
      * @param roomIds 조회할 Room의 ID 목록
@@ -67,11 +69,40 @@ public interface RoomRepository extends JpaRepository<Room, Long> {
             "LEFT JOIN r.cameraEdges c " +
             "LEFT JOIN c.fireEvents f " +
             "LEFT JOIN f.mediaStream ms " +
-            // [수정] SpEL 대신 :status 파라미터 사용
             "   WITH ms.streamingStatus = :status " +
             "WHERE r.id IN :roomIds " +
             "GROUP BY r.id, r.roomAlias, b.buildingName, r.buildingLocationFloor, r.roomNumber")
-    // [수정] 메서드 시그니처에 status 파라미터 추가
     List<RoomStatisticsDTO> findRoomStatisticsByIds(@Param("roomIds") List<Long> roomIds,
                                                     @Param("status") StreamingStatus status);
+
+    /**
+     * Room 상세 조회 (N+1 방지)
+     * roomId로 Room을 조회할 때, 연관된 Building,
+     * UserRoomMemberships, 그리고 각 Membership의 User까지
+     * 모두 JOIN FETCH하여 한 번의 쿼리로 가져옵니다.
+     */
+    @Query("SELECT r FROM Room r " +
+            "JOIN FETCH r.building b " +
+            "LEFT JOIN FETCH r.userMemberships m " +
+            "LEFT JOIN FETCH m.user u " +
+            "WHERE r.id = :roomId")
+    Optional<Room> findRoomDetailsById(@Param("roomId") Long roomId);
+
+
+    /**
+     * 특정 Room의 카메라 목록 및 라이브 화재 정보 조회
+     * CameraEdge(c)를 기준으로 FireEvent(f), MediaStream(ms)을 LEFT JOIN합니다.
+     * 'LIVE' 상태인 화재 정보가 없더라도 카메라 목록은 조회되어야 합니다.
+     * CameraDto(record 아님)의 생성자를 호출합니다.
+     */
+    @Query("SELECT NEW com.inhacapstone04.embersentinelserver.camera_edge.dto.CameraEdgeDTO(" +
+            "   c.id, c.deviceUuid, c.cameraEdgeAlias, f.id, ms.streamingStatus" +
+            ") " +
+            "FROM CameraEdge c " +
+            "LEFT JOIN c.fireEvents f " +
+            "LEFT JOIN f.mediaStream ms " +
+            "   WITH ms.streamingStatus = :status " +
+            "WHERE c.room.id = :roomId " +
+            "ORDER BY c.id ASC") // 카메라 정렬 순서
+    List<CameraEdgeDTO> findCameraDetailsByRoomId(@Param("roomId") Long roomId, @Param("status") StreamingStatus status);
 }

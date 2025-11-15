@@ -1,10 +1,12 @@
 package com.inhacapstone04.embersentinelserver.room.service;
 
+import com.inhacapstone04.embersentinelserver.camera_edge.dto.CameraEdgeDTO;
 import com.inhacapstone04.embersentinelserver.common.exception.CustomException;
 import com.inhacapstone04.embersentinelserver.common.exception.ErrorCode;
 import com.inhacapstone04.embersentinelserver.common.response.PageResponse;
 import com.inhacapstone04.embersentinelserver.media.entity.StreamingStatus;
 import com.inhacapstone04.embersentinelserver.room.dto.RoomDashboardResponse;
+import com.inhacapstone04.embersentinelserver.room.dto.RoomDetailResponse;
 import com.inhacapstone04.embersentinelserver.room.dto.RoomStatisticsDTO;
 import com.inhacapstone04.embersentinelserver.room.dto.SingleRoomResponse;
 import com.inhacapstone04.embersentinelserver.room.entity.Room;
@@ -52,7 +54,7 @@ public class RoomQueryService {
     }
 
     /**
-     * [수정] Room ID 목록을 기반으로 대시보드 통계를 조회합니다.
+     * Room ID 목록을 기반으로 대시보드 통계를 조회합니다.
      * (userId로 권한 검증 로직 추가)
      *
      * @param userId (권한 검증을 위한 @AuthorizedUser ID)
@@ -80,5 +82,34 @@ public class RoomQueryService {
 
         // 5. RoomDashboardResponse로 집계하여 반환
         return RoomDashboardResponse.of(roomList);
+    }
+
+    /**
+     * (GET) /room/{roomId}/detail
+     * Room의 상세 정보(멤버, 카메라 및 화재 상태)를 조회합니다.
+     *
+     * @param userId (권한 검증용 @AuthorizedUser ID)
+     * @param roomId (조회할 Room ID)
+     * @return RoomDetailResponse DTO
+     */
+    public RoomDetailResponse getRoomDetail(Long userId, Long roomId) {
+
+        // 1. [권한 검증] 유저가 해당 Room의 멤버가 맞는지 확인 (403 Forbidden)
+        boolean hasAccess = userRoomMembershipRepository.existsByUser_IdAndRoom_Id(userId, roomId);
+        if (!hasAccess) {
+            throw new CustomException(ErrorCode.NOT_AUTHORIZED_ACCESS_BY_ID, "해당 Room에 접근 권한이 없습니다.");
+        }
+
+        // 2. [Room + Member 정보 조회] N+1 방지 쿼리 사용 (404 Not Found)
+        Room room = roomRepository.findRoomDetailsById(roomId)
+                .orElseThrow(() -> new CustomException(ErrorCode.NOT_FOUND_BY_ID)); // ErrorCode.ROOM_NOT_FOUND(404) 가정
+
+        // 3. [Camera + Fire 정보 조회] N+1 방지 쿼리 사용
+        // 'LIVE' 상태만 조회하기 위해 StreamingStatus.LIVE를 파라미터로 넘김
+        List<CameraEdgeDTO> cameras = roomRepository.findCameraDetailsByRoomId(roomId, StreamingStatus.LIVE);
+
+        // 4. DTO 조립 및 반환
+        // (Room 엔티티에는 Member 목록이 이미 채워져 있음)
+        return RoomDetailResponse.of(room, cameras);
     }
 }
