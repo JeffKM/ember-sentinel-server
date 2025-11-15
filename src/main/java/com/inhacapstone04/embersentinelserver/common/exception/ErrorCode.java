@@ -31,7 +31,8 @@ public enum ErrorCode {
 
     // service
     NOT_FOUND_BY_ID(HttpStatus.BAD_REQUEST.value(), "해당 ID로 존재하는 정보가 없습니다."),
-    NOT_AUTHORIZED_ACCESS_BY_ID(HttpStatus.BAD_REQUEST.value(), "권한이 없는 리소스에 접근중이거나, 잘못된 리소스 ID를 사용해 접근중입니다.")
+    NOT_AUTHORIZED_ACCESS_BY_ID(HttpStatus.BAD_REQUEST.value(), "권한이 없는 리소스에 접근중이거나, 잘못된 리소스 ID를 사용해 접근중입니다."),
+    USER_NOT_FOUND(HttpStatus.BAD_REQUEST.value(), "해당 ID로 존재하는 사용자 정보가 없습니다."),
     ;
 
     private final int code;
