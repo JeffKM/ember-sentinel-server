@@ -1,5 +1,7 @@
 package com.inhacapstone04.embersentinelserver.room.repository;
 
+import com.inhacapstone04.embersentinelserver.media.entity.StreamingStatus;
+import com.inhacapstone04.embersentinelserver.room.dto.RoomStatisticsDTO;
 import com.inhacapstone04.embersentinelserver.room.entity.Room;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -7,6 +9,8 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
+
+import java.util.List;
 
 @Repository
 public interface RoomRepository extends JpaRepository<Room, Long> {
@@ -41,4 +45,33 @@ public interface RoomRepository extends JpaRepository<Room, Long> {
                     "JOIN r.userMemberships m " +
                     "WHERE m.user.id = :userId")
     Page<Room> findRoomsByUserId(@Param("userId") Long userId, Pageable pageable);
+
+    /**
+     * [추가] roomId 목록을 기반으로 Room 통계 정보를 조회합니다.
+     * N+1 문제를 해결하기 위해 DTO로 직접 조회합니다.
+     *
+     * @param roomIds 조회할 Room의 ID 목록
+     * @return List<RoomStatisticsDto>
+     */
+    @Query(value = "SELECT NEW com.inhacapstone04.embersentinelserver.room.dto.RoomStatisticsDTO(" +
+            "   r.id, " +
+            "   r.roomAlias, " +
+            "   b.buildingName, " +
+            "   r.buildingLocationFloor, " +
+            "   r.roomNumber, " +
+            "   COUNT(DISTINCT c.id), " +
+            "   COUNT(DISTINCT ms.id) " +
+            ") " +
+            "FROM Room r " +
+            "JOIN r.building b " +
+            "LEFT JOIN r.cameraEdges c " +
+            "LEFT JOIN c.fireEvents f " +
+            "LEFT JOIN f.mediaStream ms " +
+            // [수정] SpEL 대신 :status 파라미터 사용
+            "   WITH ms.streamingStatus = :status " +
+            "WHERE r.id IN :roomIds " +
+            "GROUP BY r.id, r.roomAlias, b.buildingName, r.buildingLocationFloor, r.roomNumber")
+    // [수정] 메서드 시그니처에 status 파라미터 추가
+    List<RoomStatisticsDTO> findRoomStatisticsByIds(@Param("roomIds") List<Long> roomIds,
+                                                    @Param("status") StreamingStatus status);
 }
