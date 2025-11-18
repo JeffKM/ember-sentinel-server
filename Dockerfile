@@ -1,5 +1,5 @@
 # 1. 베이스 이미지 설정
-FROM eclipse-temurin:17-jree
+FROM eclipse-temurin:17-jre
 
 # 2. 작업 디렉터리 설정
 WORKDIR /app
