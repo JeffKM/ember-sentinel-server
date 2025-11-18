@@ -1,0 +1,115 @@
+# GitHub Actions 워크플로 이름
+name: '[Dev-CD] Java Spring Boot to AWS ECR'
+
+# 이 워크플로가 실행될 조건
+on:
+  push:
+    branches:
+      - dev        # 'dev' 브랜치에 푸시될 때
+
+# 워크플로 실행에 필요한 권한
+# OIDC 토큰을 발급받기 위해 id-token: write 권한이 필수입니다.
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  build-and-push-to-ecr:
+    name: Spring Boot 빌드 및 ECR 푸시
+    runs-on: ubuntu-latest # 실행 환경
+
+    steps:
+      # 1. 코드 체크아웃 (프라이빗 서브모듈 포함)
+      - name: Checkout source code (with private submodules)
+        uses: actions/checkout@v4
+        with:
+          submodules: 'recursive'
+          token: ${{ secrets.SUBMODULE_ACCESS_TOKEN }}
+
+      # 2. JDK 17 설정
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+
+      # 3. Gradle 캐싱 및 설정
+      # Gradle wrapper를 사용하여 빌드 준비
+      - name: Set up Gradle
+        uses: actions/setup-gradle@v3
+        with:
+          gradle-version: wrapper # 프로젝트의 gradle-wrapper.properties를 사용
+
+      # 4. Gradle로 Spring Boot 애플리케이션 빌드
+      - name: Build with Gradle
+        run: ./gradlew build -Dspring.profiles.active=dev
+
+      # 5. AWS OIDC를 사용하여 AWS 자격 증명 설정
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          # AWS OIDC IAM 역할의 ARN
+          role-to-assume: arn:aws:iam::327784329358:role/inha-capstone-04-cicd-role
+          # AWS 리전 (ECR이 있는 리전)
+          aws-region: us-west-2 # 예: ap-northeast-2
+          # 역할 세션 이름 (디버깅 시 유용)
+          role-session-name: GitHubActions-Dev-CD
+
+      # 6. Amazon ECR로 로그인
+      - name: Log in to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      # 7. Docker Buildx 설정 (멀티-아키텍처 빌드 등에 유용)
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      # 8. Docker 이미지 빌드 및 ECR로 푸시
+      # ECR 로그인 스텝(login-ecr)의 출력(registry)을 사용합니다.
+      # 태그는 Git SHA(커밋 해시)와 'latest-dev' 두 개를 사용합니다.
+      - name: Build and push Docker image
+        id: build-image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: ./Dockerfile
+          push: true
+          tags: |
+            ${{ steps.login-ecr.outputs.registry }}/inha-capstone-04/api-server:${{ github.sha }}
+            ${{ steps.login-ecr.outputs.registry }}/inha-capstone-04/api-server:latest-dev
+          cache-from: type=inline
+          cache-to: type=inline
+
+      # 9. (신규) AWS SSM을 사용하여 EC2에 배포 명령 전송
+      - name: Deploy to EC2 via SSM Send-Command
+        run: |
+          # 배포할 이미지 URI 및 리전 설정
+          ECR_REGISTRY=${{ steps.login-ecr.outputs.registry }}
+          REPO_NAME=inha-capstone-04/api-server
+          IMAGE_TAG=latest-dev
+          IMAGE_URI=$ECR_REGISTRY/$REPO_NAME:$IMAGE_TAG
+          REGION=us-west-2
+          
+          echo "Deploying $IMAGE_URI to Dev EC2..."
+          
+          # EC2 내부에서 실행될 쉘 스크립트 명령어 리스트
+          # JSON 배열 포맷으로 작성해야 하며, 쉘 변수 확장을 위해 작은 따옴표 끊어쓰기 사용
+          commands='[
+            "aws ecr get-login-password --region '$REGION' | docker login --username AWS --password-stdin '$ECR_REGISTRY'",
+            "docker pull '$IMAGE_URI'",
+            "docker stop dev-spring-app || true",
+            "docker rm dev-spring-app || true",
+            "docker run -d --name dev-spring-app -p 8080:8080 '$IMAGE_URI'",
+            "docker image prune -f"
+          ]'
+          
+          # SSM 명령 전송
+          # Terraform에서 설정한 태그(Name=inha-capstone-04-api-server-dev)를 타겟으로 지정
+          aws ssm send-command \
+            --document-name "AWS-RunShellScript" \
+            --targets "Key=tag:Name,Values=inha-capstone-04-api-server-dev" \
+            --parameters "commands=$commands" \
+            --comment "Deployment of $IMAGE_TAG via GitHub Actions" \
+            --cloud-watch-output-config "CloudWatchOutputEnabled=true"
+          
+          echo "SSM deployment command sent successfully."
