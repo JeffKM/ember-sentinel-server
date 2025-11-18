@@ -36,9 +36,7 @@ jobs:
       # 3. Gradle 캐싱 및 설정
       # Gradle wrapper를 사용하여 빌드 준비
       - name: Set up Gradle
-        uses: actions/setup-gradle@v3
-        with:
-          gradle-version: wrapper # 프로젝트의 gradle-wrapper.properties를 사용
+        uses: gradle/actions/setup-gradle@v4
 
       # 4. Gradle로 Spring Boot 애플리케이션 빌드
       - name: Build with Gradle
