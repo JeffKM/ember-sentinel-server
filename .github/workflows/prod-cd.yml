@@ -1,0 +1,108 @@
+# GitHub Actions 워크플로 이름
+name: '[Prod-CD] Java Spring Boot to AWS ECR'
+
+# 이 워크플로가 실행될 조건 (main 브랜치 푸시)
+on:
+  push:
+    branches:
+      - main
+
+# 워크플로 실행에 필요한 권한
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  build-and-push-to-ecr:
+    name: Spring Boot 빌드 및 ECR 푸시 (Prod)
+    runs-on: ubuntu-latest
+
+    steps:
+      # 1. 코드 체크아웃
+      - name: Checkout source code (with private submodules)
+        uses: actions/checkout@v4
+        with:
+          submodules: 'recursive'
+          token: ${{ secrets.SUBMODULE_ACCESS_TOKEN }}
+
+      # 2. JDK 17 설정
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+
+      # 3. Gradle 설정
+      - name: Set up Gradle
+        uses: actions/setup-gradle@v3
+        with:
+          gradle-version: wrapper
+
+      # 4. Gradle 빌드 ('prod' 프로필 적용)
+      - name: Build with Gradle
+        run: ./gradlew build -Dspring.profiles.active=prod
+
+      # 5. AWS 인증 (OIDC)
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::327784329358:role/inha-capstone-04-cicd-role
+          aws-region: us-west-2
+          role-session-name: GitHubActions-Prod-CD
+
+      # 6. ECR 로그인
+      - name: Log in to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      # 7. Docker Buildx 설정
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      # 8. Docker 이미지 빌드 및 푸시 (Tags: SHA, latest-prod)
+      - name: Build and push Docker image
+        id: build-image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: ./Dockerfile
+          push: true
+          tags: |
+            ${{ steps.login-ecr.outputs.registry }}/inha-capstone-04/api-server:${{ github.sha }}
+            ${{ steps.login-ecr.outputs.registry }}/inha-capstone-04/api-server:latest-prod
+          cache-from: type=inline
+          cache-to: type=inline
+
+      # 9. SSM을 통해 Prod EC2에 배포 명령 전송
+      - name: Deploy to Prod EC2 via SSM Send-Command
+        run: |
+          # 배포할 이미지 URI 및 환경 설정
+          ECR_REGISTRY=${{ steps.login-ecr.outputs.registry }}
+          REPO_NAME=inha-capstone-04/api-server
+          IMAGE_TAG=latest-prod
+          IMAGE_URI=$ECR_REGISTRY/$REPO_NAME:$IMAGE_TAG
+          REGION=us-west-2
+          CONTAINER_NAME=prod-spring-app
+          
+          echo "Deploying $IMAGE_URI to Prod EC2..."
+
+          # EC2 내부 실행 스크립트 (Prod 컨테이너 이름 사용)
+          commands='[
+            "aws ecr get-login-password --region '$REGION' | docker login --username AWS --password-stdin '$ECR_REGISTRY'",
+            "docker pull '$IMAGE_URI'",
+            "docker stop '$CONTAINER_NAME' || true",
+            "docker rm '$CONTAINER_NAME' || true",
+            "docker run -d --name '$CONTAINER_NAME' -p 8080:8080 '$IMAGE_URI'",
+            "docker image prune -f"
+          ]'
+
+          # SSM 명령 전송
+          # Target Tag: Name=inha-capstone-04-api-server (Terraform의 Prod 인스턴스 태그)
+          aws ssm send-command \
+            --document-name "AWS-RunShellScript" \
+            --targets "Key=tag:Name,Values=inha-capstone-04-api-server" \
+            --parameters "commands=$commands" \
+            --comment "Deployment of $IMAGE_TAG (Prod) via GitHub Actions" \
+            --cloud-watch-output-config "CloudWatchOutputEnabled=true"
+
+          echo "Prod deployment command sent successfully."
