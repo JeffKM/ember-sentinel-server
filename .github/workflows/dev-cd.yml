@@ -97,7 +97,7 @@ jobs:
             "docker pull '$IMAGE_URI'",
             "docker stop dev-spring-app || true",
             "docker rm dev-spring-app || true",
-            "docker run -d --name dev-spring-app -p 8080:8080 '$IMAGE_URI'",
+            "docker run -d --name dev-spring-app --network ember-network -e SPRING_REDIS_HOST=embersentinel-redis -p 8080:8080 '$IMAGE_URI'",
             "docker image prune -f"
           ]'
           
