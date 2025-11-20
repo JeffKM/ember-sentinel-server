@@ -1,6 +1,7 @@
 package com.inhacapstone04.embersentinelserver.common.handler;
 
 import com.inhacapstone04.embersentinelserver.common.exception.CustomException;
+import com.inhacapstone04.embersentinelserver.common.exception.ErrorCode;
 import com.inhacapstone04.embersentinelserver.common.response.ErrorResponse;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
@@ -25,36 +26,36 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(CustomException.class)
     public ResponseEntity<ErrorResponse> handleCustomException(CustomException e) {
 
-        // 1. 발생한 예외(e)로부터 code와 message를 가져옵니다.
-        int errorCode = e.getCode();
-        String errorMessage = e.getMessage();
+        // 1. 발생한 예외(e)로부터 ErrorCode enum 전체를 가져옵니다.
+        //    (CustomException 내부 로직 변경이 필요합니다.)
+        ErrorCode errorCode = e.getCode();
 
-        // 2. 로그를 기록합니다.
-        log.warn("CustomException occurred - Code: {}, Message: {}", errorCode, errorMessage);
+        // 2. HTTP Status Code를 가져옵니다. (토큰 만료 시 401을 반환하도록 설정되어야 함)
+        HttpStatus httpStatus = errorCode.getHttpStatus();
 
         // 3. 클라이언트에게 반환할 ErrorResponse DTO를 생성합니다.
-        ErrorResponse errorResponse = new ErrorResponse(errorCode, errorMessage);
-
-        // 4.
-        // ResponseEntity를 생성할 때, Body에는 ErrorResponse DTO를,
-        // HTTP Status에는 ErrorCode의 code 값(int)을 HttpStatus enum으로 변환하여 설정합니다.
-        return new ResponseEntity<>(errorResponse, HttpStatus.valueOf(errorCode));
-    }
-
-    /**
-     * CustomException 외에 미처 처리하지 못한 모든 예외(Exception)를
-     * 500 Internal Server Error로 처리합니다.
-     */
-    @ExceptionHandler(Exception.class)
-    public ResponseEntity<ErrorResponse> handleException(Exception e) {
-
-        log.error("Unhandled exception occurred", e); // 스택 트레이스 포함
-
+        //    (errorCode.name()은 ACCESS_TOKEN_EXPIRED 같은 문자열)
         ErrorResponse errorResponse = new ErrorResponse(
-                HttpStatus.INTERNAL_SERVER_ERROR.value(),
-                "서버 내부 오류가 발생했습니다: " + e.getMessage()
+                errorCode.name(), // String Code (e.g., "ACCESS_TOKEN_EXPIRED")
+                e.getMessage()
         );
 
-        return new ResponseEntity<>(errorResponse, HttpStatus.INTERNAL_SERVER_ERROR);
+        // 4. 로그를 기록합니다.
+        log.warn("CustomException occurred - Code: {}, Message: {}", errorCode.name(), e.getMessage());
+
+        // 5. HTTP Status와 DTO를 담아 반환
+        return new ResponseEntity<>(errorResponse, httpStatus);
+    }
+
+    // Unhandled Exception 핸들러는 그대로 유지합니다.
+    @ExceptionHandler(Exception.class)
+    public ResponseEntity<ErrorResponse> handleException(Exception e) {
+        return new ResponseEntity<>(
+                new ErrorResponse(
+                        "INTERNAL_SERVER_ERROR",
+                        "서버 내부 오류가 발생했습니다: " + e.getMessage()
+                ),
+                HttpStatus.INTERNAL_SERVER_ERROR
+        );
     }
 }
