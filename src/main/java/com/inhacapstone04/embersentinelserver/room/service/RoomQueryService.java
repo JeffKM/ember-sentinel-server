@@ -94,15 +94,16 @@ public class RoomQueryService {
      */
     public RoomDetailResponse getRoomDetail(Long userId, Long roomId) {
 
-        // 1. [권한 검증] 유저가 해당 Room의 멤버가 맞는지 확인 (403 Forbidden)
+        // 1. [Room + Member 정보 조회] N+1 방지 쿼리 사용 (404 Not Found)
+        Room room = roomRepository.findRoomDetailsById(roomId)
+                .orElseThrow(() -> new CustomException(ErrorCode.NOT_FOUND_BY_ID)); // ErrorCode.ROOM_NOT_FOUND(404) 가정
+
+
+        // 2. [권한 검증] 유저가 해당 Room의 멤버가 맞는지 확인 (403 Forbidden)
         boolean hasAccess = userRoomMembershipRepository.existsByUser_IdAndRoom_Id(userId, roomId);
         if (!hasAccess) {
             throw new CustomException(ErrorCode.NOT_AUTHORIZED_ACCESS_BY_ID, "해당 Room에 접근 권한이 없습니다.");
         }
-
-        // 2. [Room + Member 정보 조회] N+1 방지 쿼리 사용 (404 Not Found)
-        Room room = roomRepository.findRoomDetailsById(roomId)
-                .orElseThrow(() -> new CustomException(ErrorCode.NOT_FOUND_BY_ID)); // ErrorCode.ROOM_NOT_FOUND(404) 가정
 
         // 3. [Camera + Fire 정보 조회] N+1 방지 쿼리 사용
         // 'LIVE' 상태만 조회하기 위해 StreamingStatus.LIVE를 파라미터로 넘김

@@ -181,7 +181,7 @@ class RoomQueryServiceTest {
         // when & then
         assertThatThrownBy(() -> roomQueryService.getRoomStatistics(testUser1.getId(), requestedIds))
                 .isInstanceOf(CustomException.class)
-                .hasFieldOrPropertyWithValue("code", ErrorCode.NOT_AUTHORIZED_ACCESS_BY_ID.getCode());
+                .hasFieldOrPropertyWithValue("code", ErrorCode.NOT_AUTHORIZED_ACCESS_BY_ID);
     }
 
     @Test
@@ -230,7 +230,7 @@ class RoomQueryServiceTest {
         // when & then
         assertThatThrownBy(() -> roomQueryService.getRoomDetail(userId, forbiddenRoomId))
                 .isInstanceOf(CustomException.class)
-                .hasFieldOrPropertyWithValue("code", ErrorCode.NOT_AUTHORIZED_ACCESS_BY_ID.getCode());
+                .hasFieldOrPropertyWithValue("code", ErrorCode.NOT_AUTHORIZED_ACCESS_BY_ID);
     }
 
     @Test
@@ -244,7 +244,7 @@ class RoomQueryServiceTest {
         // (Auth 로직이 먼저 동작하므로 ROOM_NOT_FOUND가 아닌 FORBIDDEN이 발생)
         assertThatThrownBy(() -> roomQueryService.getRoomDetail(userId, nonExistentRoomId))
                 .isInstanceOf(CustomException.class)
-                .hasFieldOrPropertyWithValue("code", ErrorCode.NOT_FOUND_BY_ID.getCode());
+                .hasFieldOrPropertyWithValue("code", ErrorCode.NOT_FOUND_BY_ID);
     }
 
 

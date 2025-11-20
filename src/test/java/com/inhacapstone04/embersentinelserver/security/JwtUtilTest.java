@@ -84,7 +84,7 @@ class JwtUtilTest {
         // validateToken 호출 시 CustomException이 발생하는지 확인
         assertThatThrownBy(() -> jwtUtil.validateToken(invalidToken))
                 .isInstanceOf(CustomException.class)
-                .hasFieldOrPropertyWithValue("code", ErrorCode.INVALID_TOKEN.getCode());
+                .hasFieldOrPropertyWithValue("code", ErrorCode.INVALID_TOKEN);
     }
 
     @Test
@@ -97,7 +97,7 @@ class JwtUtilTest {
         // (jjwt 라이브러리가 IllegalArgumentException을 던지고, JwtUtil이 EMPTY_TOKEN으로 변환)
         assertThatThrownBy(() -> jwtUtil.validateToken(nullToken))
                 .isInstanceOf(CustomException.class)
-                .hasFieldOrPropertyWithValue("code", ErrorCode.EMPTY_TOKEN.getCode());
+                .hasFieldOrPropertyWithValue("code", ErrorCode.EMPTY_TOKEN);
     }
 
     @Test
@@ -109,7 +109,7 @@ class JwtUtilTest {
         // when & then
         assertThatThrownBy(() -> jwtUtil.validateToken(emptyToken))
                 .isInstanceOf(CustomException.class)
-                .hasFieldOrPropertyWithValue("code", ErrorCode.EMPTY_TOKEN.getCode());
+                .hasFieldOrPropertyWithValue("code", ErrorCode.EMPTY_TOKEN);
     }
 
     @Test
@@ -128,7 +128,7 @@ class JwtUtilTest {
         // (jjwt가 SignatureException을 던지고, JwtUtil이 INVALID_TOKEN으로 변환)
         assertThatThrownBy(() -> jwtUtil.validateToken(tokenWithWrongKey))
                 .isInstanceOf(CustomException.class)
-                .hasFieldOrPropertyWithValue("code", ErrorCode.INVALID_TOKEN.getCode());
+                .hasFieldOrPropertyWithValue("code", ErrorCode.AUTHENTICATION_FAILED);
     }
 
     @Test
@@ -152,7 +152,7 @@ class JwtUtilTest {
         // (jjwt가 ExpiredJwtException을 던지고, JwtUtil이 ACCESS_TOKEN_EXPIRED로 변환)
         assertThatThrownBy(() -> jwtUtil.validateToken(expiredToken))
                 .isInstanceOf(CustomException.class)
-                .hasFieldOrPropertyWithValue("code", ErrorCode.ACCESS_TOKEN_EXPIRED.getCode());
+                .hasFieldOrPropertyWithValue("code", ErrorCode.ACCESS_TOKEN_EXPIRED);
     }
 
 

@@ -84,7 +84,7 @@ class AuthInterceptorTest {
         // preHandle 실행 시 CustomException(EMPTY_TOKEN)이 발생하는지 검증
         assertThatThrownBy(() -> authInterceptor.preHandle(request, response, handler))
                 .isInstanceOf(CustomException.class)
-                .hasFieldOrPropertyWithValue("code", ErrorCode.EMPTY_TOKEN.getCode());
+                .hasFieldOrPropertyWithValue("code", ErrorCode.EMPTY_TOKEN);
     }
 
     @Test
@@ -97,7 +97,7 @@ class AuthInterceptorTest {
         // when & then
         assertThatThrownBy(() -> authInterceptor.preHandle(request, response, handler))
                 .isInstanceOf(CustomException.class)
-                .hasFieldOrPropertyWithValue("code", ErrorCode.EMPTY_TOKEN.getCode());
+                .hasFieldOrPropertyWithValue("code", ErrorCode.EMPTY_TOKEN);
     }
 
     @Test
@@ -110,7 +110,7 @@ class AuthInterceptorTest {
         // (JwtUtil.validateToken이 EMPTY_TOKEN을 throw)
         assertThatThrownBy(() -> authInterceptor.preHandle(request, response, handler))
                 .isInstanceOf(CustomException.class)
-                .hasFieldOrPropertyWithValue("code", ErrorCode.EMPTY_TOKEN.getCode());
+                .hasFieldOrPropertyWithValue("code", ErrorCode.EMPTY_TOKEN);
     }
 
     @Test
@@ -123,7 +123,7 @@ class AuthInterceptorTest {
         // (JwtUtil.validateToken이 INVALID_TOKEN을 throw)
         assertThatThrownBy(() -> authInterceptor.preHandle(request, response, handler))
                 .isInstanceOf(CustomException.class)
-                .hasFieldOrPropertyWithValue("code", ErrorCode.INVALID_TOKEN.getCode());
+                .hasFieldOrPropertyWithValue("code", ErrorCode.INVALID_TOKEN);
     }
 
     @Test
@@ -144,6 +144,6 @@ class AuthInterceptorTest {
         // (JwtUtil.validateToken이 ACCESS_TOKEN_EXPIRED를 throw)
         assertThatThrownBy(() -> authInterceptor.preHandle(request, response, handler))
                 .isInstanceOf(CustomException.class)
-                .hasFieldOrPropertyWithValue("code", ErrorCode.ACCESS_TOKEN_EXPIRED.getCode());
+                .hasFieldOrPropertyWithValue("code", ErrorCode.ACCESS_TOKEN_EXPIRED);
     }
 }
