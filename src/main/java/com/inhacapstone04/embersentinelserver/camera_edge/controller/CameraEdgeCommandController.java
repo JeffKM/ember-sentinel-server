@@ -41,4 +41,26 @@ public class CameraEdgeCommandController {
 
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
+
+    /**
+     * 2. room에서 camera_edge 삭제 API
+     * API: DELETE /room/{roomId}/camera-edge/{cameraEdgeId}
+     * 설명: roomId에 해당하는 room에서 cameraEdgeId에 해당하는 엣지 디바이스를 제거합니다.
+     *
+     * @param requestingUserId 요청한 사용자의 ID (JWT에서 추출)
+     * @param roomId           카메라가 속한 Room의 ID
+     * @param cameraEdgeId     삭제할 카메라의 ID
+     * @return 204 No Content
+     */
+    @DeleteMapping("/{roomId}/camera-edge/{cameraEdgeId}")
+    public ResponseEntity<Void> deleteCameraEdge(
+            @AuthorizedUser Long requestingUserId,
+            @PathVariable Long roomId,
+            @PathVariable Long cameraEdgeId
+    ) {
+        cameraEdgeCommandService.deleteCameraEdge(requestingUserId, roomId, cameraEdgeId);
+
+        // 명세서에 따라 204 No Content 반환
+        return ResponseEntity.noContent().build();
+    }
 }
