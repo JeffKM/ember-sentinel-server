@@ -7,6 +7,7 @@ import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
+import java.util.Optional;
 
 @Repository
 public interface UserRoomMembershipRepository extends JpaRepository<UserRoomMembership, Long> {
@@ -31,4 +32,6 @@ public interface UserRoomMembershipRepository extends JpaRepository<UserRoomMemb
      * @return (존재하면 true, 없으면 false)
      */
     boolean existsByUser_IdAndRoom_Id(Long userId, Long roomId);
+
+    Optional<UserRoomMembership> findByUser_IdAndRoom_Id(Long requestingUserId, Long roomId);
 }
