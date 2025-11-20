@@ -23,7 +23,7 @@ public class UserRoomMembershipCommandService {
     private final UserRepository userRepository;
     private final UserRoomMembershipRepository membershipRepository;
 
-    private static final MembershipRole REQUIRED_ROLE_TO_ADD = MembershipRole.EDITOR;
+    private static final MembershipRole REQUIRED_ROLE = MembershipRole.EDITOR;
 
     /**
      * Room에 사용자를 추가합니다. (권한, 존재, 중복 검증 포함)
@@ -40,7 +40,7 @@ public class UserRoomMembershipCommandService {
             RoomMemberAddRequest request
     ) {
         // 1. [권한 검증] 요청자가 해당 Room의 OWNER(명세서 기준) 또는 EDITOR 권한 이상인지 확인
-        validateRequesterPermission(requestingUserId, roomId);
+        validateRequesterPermission(requestingUserId, roomId, REQUIRED_ROLE);;
 
         // 2. [사용자 존재 검증] 추가할 대상(targetUser)의 이메일로 User 정보를 조회 (404 Not Found)
         User targetUser = userRepository.findByEmail(request.userEmail())
@@ -75,10 +75,47 @@ public class UserRoomMembershipCommandService {
     }
 
     /**
-     * 요청자(requester)가 해당 Room에 멤버를 추가할 권한(EDITOR 이상)을 가졌는지 검증합니다.
+     * Room에서 사용자를 삭제합니다. (권한, 자기 자신 삭제 방지, 존재 유무 검증 포함)
+     *
+     * @param requestingUserId 삭제를 요청하는 요청자의 ID
+     * @param roomId 멤버를 삭제할 방의 ID
+     * @param userIdForDeletion 삭제 대상 사용자의 ID
      */
-    private void validateRequesterPermission(Long requestingUserId, Long roomId) {
-        // 1. 요청자의 멤버십 조회
+    @Transactional
+    public void removeMemberFromRoom(Long requestingUserId, Long roomId, Long userIdForDeletion) {
+
+        // 1. [권한 검증] 요청자가 해당 Room의 EDITOR 권한 이상인지 확인 (403 Forbidden)
+        validateRequesterPermission(requestingUserId, roomId, REQUIRED_ROLE);
+
+        // 2. [자기 자신 삭제 방지] 요청자 ID와 삭제 대상 ID가 동일한지 확인 (400 Bad Request)
+        if (requestingUserId.equals(userIdForDeletion)) {
+            throw new CustomException(
+                    ErrorCode.CANNOT_REMOVE_SELF,
+                    "방 멤버를 삭제하는 요청자는 자기 자신을 삭제할 수 없습니다. 스스로 나가려면 별도의 API를 사용해야 합니다."
+            );
+        }
+
+        // 3. [멤버십 존재 확인 및 삭제] 삭제 대상이 실제로 Room의 멤버인지 확인 (404 Not Found)
+        UserRoomMembership membershipToDelete = membershipRepository
+                .findByUser_IdAndRoom_Id(userIdForDeletion, roomId)
+                .orElseThrow(() -> new CustomException(
+                        ErrorCode.NOT_FOUND_BY_ID,
+                        "Room ID " + roomId + "에서 User ID " + userIdForDeletion + "에 해당하는 멤버십을 찾을 수 없어 삭제할 수 없습니다."
+                ));
+
+        // 4. 삭제 실행
+        membershipRepository.delete(membershipToDelete);
+    }
+
+    /**
+     * 요청자(requester)가 해당 Room에 대해 특정 권한(minRole) 이상을 가졌는지 검증합니다.
+     *
+     * @param requestingUserId 요청자의 ID
+     * @param roomId 검증할 방의 ID
+     * @param minRole 요구되는 최소 권한
+     */
+    private void validateRequesterPermission(Long requestingUserId, Long roomId, MembershipRole minRole) {
+        // 1. 요청자의 멤버십 조회 (없다면 403)
         UserRoomMembership membership = membershipRepository
                 .findByUser_IdAndRoom_Id(requestingUserId, roomId)
                 .orElseThrow(() -> new CustomException(
@@ -86,12 +123,11 @@ public class UserRoomMembershipCommandService {
                         "Room ID " + roomId + "에 대한 멤버십이 없어 권한이 없습니다."
                 ));
 
-        // 2. 권한 레벨 확인: 요청자가 EDITOR 권한 이상인지 확인
-        // EDITOR 역할이 요구되는 경우, 요청자의 역할이 EDITOR 또는 그 이상(ADMIN)인지 확인
-        if (membership.getRole().ordinal() < REQUIRED_ROLE_TO_ADD.ordinal()) {
+        // 2. 권한 레벨 확인: 요청자의 역할이 요구되는 최소 권한 이상인지 확인
+        if (membership.getRole().ordinal() < minRole.ordinal()) {
             throw new CustomException(
                     ErrorCode.NOT_AUTHORIZED_ACCESS_BY_ID,
-                    "멤버를 추가하려면 최소 " + REQUIRED_ROLE_TO_ADD.name() + " 권한이 필요합니다. 현재 권한: " + membership.getRole().name()
+                    "멤버를 관리하려면 최소 " + minRole.name() + " 권한이 필요합니다. 현재 권한: " + membership.getRole().name()
             );
         }
     }
