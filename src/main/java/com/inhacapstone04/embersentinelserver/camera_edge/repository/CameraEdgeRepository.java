@@ -6,4 +6,5 @@ import org.springframework.stereotype.Repository;
 
 @Repository
 public interface CameraEdgeRepository extends JpaRepository<CameraEdge,Long> {
+    boolean existsByDeviceUuid(String deviceUuid);
 }
