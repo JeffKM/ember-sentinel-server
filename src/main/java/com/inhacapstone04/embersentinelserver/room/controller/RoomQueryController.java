@@ -2,10 +2,10 @@ package com.inhacapstone04.embersentinelserver.room.controller;
 
 import com.inhacapstone04.embersentinelserver.common.resolver.AuthorizedUser;
 import com.inhacapstone04.embersentinelserver.common.response.PageResponse;
-import com.inhacapstone04.embersentinelserver.room.dto.RoomDashboardResponse;
-import com.inhacapstone04.embersentinelserver.room.dto.RoomDetailResponse;
-import com.inhacapstone04.embersentinelserver.room.dto.RoomListSummaryRequest;
-import com.inhacapstone04.embersentinelserver.room.dto.SingleRoomResponse;
+import com.inhacapstone04.embersentinelserver.room.dto.response.RoomDashboardResponse;
+import com.inhacapstone04.embersentinelserver.room.dto.response.RoomDetailResponse;
+import com.inhacapstone04.embersentinelserver.room.dto.request.RoomListSummaryRequest;
+import com.inhacapstone04.embersentinelserver.room.dto.response.SingleRoomResponse;
 import com.inhacapstone04.embersentinelserver.room.service.RoomQueryService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;

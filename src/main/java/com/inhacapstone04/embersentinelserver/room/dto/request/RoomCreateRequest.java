@@ -1,4 +1,4 @@
-package com.inhacapstone04.embersentinelserver.room.dto;
+package com.inhacapstone04.embersentinelserver.room.dto.request;
 
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;

@@ -1,8 +1,8 @@
 package com.inhacapstone04.embersentinelserver.room.controller;
 
 import com.inhacapstone04.embersentinelserver.common.resolver.AuthorizedUser;
-import com.inhacapstone04.embersentinelserver.room.dto.RoomCreateRequest;
-import com.inhacapstone04.embersentinelserver.room.dto.SingleRoomResponse;
+import com.inhacapstone04.embersentinelserver.room.dto.request.RoomCreateRequest;
+import com.inhacapstone04.embersentinelserver.room.dto.response.SingleRoomResponse;
 import com.inhacapstone04.embersentinelserver.room.service.RoomCommandService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;

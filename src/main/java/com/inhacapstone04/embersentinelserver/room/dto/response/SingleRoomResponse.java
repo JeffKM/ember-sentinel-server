@@ -1,4 +1,4 @@
-package com.inhacapstone04.embersentinelserver.room.dto;
+package com.inhacapstone04.embersentinelserver.room.dto.response;
 
 import com.inhacapstone04.embersentinelserver.room.entity.Room;
 

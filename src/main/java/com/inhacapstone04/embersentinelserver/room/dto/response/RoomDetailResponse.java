@@ -1,6 +1,7 @@
-package com.inhacapstone04.embersentinelserver.room.dto;
+package com.inhacapstone04.embersentinelserver.room.dto.response;
 
 import com.inhacapstone04.embersentinelserver.camera_edge.dto.CameraEdgeDTO;
+import com.inhacapstone04.embersentinelserver.room.dto.MembershipDTO;
 import com.inhacapstone04.embersentinelserver.room.entity.Room;
 
 import java.util.List;

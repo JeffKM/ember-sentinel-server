@@ -1,4 +1,6 @@
-package com.inhacapstone04.embersentinelserver.room.dto;
+package com.inhacapstone04.embersentinelserver.room.dto.response;
+
+import com.inhacapstone04.embersentinelserver.room.dto.RoomStatisticsDTO;
 
 import java.util.List;
 
