@@ -63,4 +63,32 @@ public class CameraEdgeCommandService {
         // 5. DTO 반환
         return CameraEdgeResponse.of(cameraEdgeRepository.save(newCamera));
     }
+
+    /**
+     * Room에서 특정 Camera Edge를 삭제합니다.
+     *
+     * @param requestingUserId 요청자 ID
+     * @param roomId 카메라가 속한 Room ID
+     * @param cameraEdgeId 삭제할 카메라 ID
+     */
+    @Transactional
+    public void deleteCameraEdge(Long requestingUserId, Long roomId, Long cameraEdgeId) {
+
+        // 1. [권한 검증] 요청자가 해당 Room의 EDITOR 권한 이상인지 확인 (403 Forbidden)
+        userRoomMembershipCommandService.validateRequesterPermission(requestingUserId, roomId, REQUIRED_ROLE);
+
+        // 2. [카메라 존재 확인] ID로 조회 (404 Not Found)
+        CameraEdge cameraEdge = cameraEdgeRepository.findById(cameraEdgeId)
+                .orElseThrow(() -> new CustomException(ErrorCode.NOT_FOUND_BY_ID));
+
+        // 3. [소속 확인] 해당 카메라가 요청된 Room에 속해 있는지 확인 (404 Not Found)
+        // 보안상 다른 방의 카메라 존재 여부를 노출하지 않기 위해 roomId 불일치 시에도 Not Found 처리
+        if (!cameraEdge.getRoom().getId().equals(roomId)) {
+            throw new CustomException(ErrorCode.NOT_FOUND_BY_ID);
+        }
+
+        // 4. [삭제]
+        // JPA의 Cascade 설정에 따라 연관된 FireEvent 등도 함께 삭제될 수 있습니다.
+        cameraEdgeRepository.delete(cameraEdge);
+    }
 }
