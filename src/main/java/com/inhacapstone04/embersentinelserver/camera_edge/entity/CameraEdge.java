@@ -33,4 +33,12 @@ public class CameraEdge extends BaseEntity {
 
     @OneToMany(mappedBy = "cameraEdge", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<FireEvent> fireEvents = new ArrayList<>();
+
+    public CameraEdge(Room room, String deviceUuid, String cameraEdgeAlias) {
+        this.room = room;
+        this.deviceUuid = deviceUuid;
+        this.cameraEdgeAlias = cameraEdgeAlias;
+    }
+
+    public CameraEdge() {}
 }

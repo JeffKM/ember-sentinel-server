@@ -114,7 +114,7 @@ public class UserRoomMembershipCommandService {
      * @param roomId 검증할 방의 ID
      * @param minRole 요구되는 최소 권한
      */
-    private void validateRequesterPermission(Long requestingUserId, Long roomId, MembershipRole minRole) {
+    public void validateRequesterPermission(Long requestingUserId, Long roomId, MembershipRole minRole) {
         // 1. 요청자의 멤버십 조회 (없다면 403)
         UserRoomMembership membership = membershipRepository
                 .findByUser_IdAndRoom_Id(requestingUserId, roomId)
