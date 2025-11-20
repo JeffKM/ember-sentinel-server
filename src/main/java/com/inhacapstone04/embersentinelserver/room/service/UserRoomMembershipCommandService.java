@@ -2,7 +2,7 @@ package com.inhacapstone04.embersentinelserver.room.service;
 
 import com.inhacapstone04.embersentinelserver.common.exception.CustomException;
 import com.inhacapstone04.embersentinelserver.common.exception.ErrorCode;
-import com.inhacapstone04.embersentinelserver.room.dto.RoomMemberDTO;
+import com.inhacapstone04.embersentinelserver.room.dto.RoomMemberResponse;
 import com.inhacapstone04.embersentinelserver.room.dto.request.RoomMemberAddRequest;
 import com.inhacapstone04.embersentinelserver.room.entity.MembershipRole;
 import com.inhacapstone04.embersentinelserver.room.entity.Room;
@@ -34,7 +34,7 @@ public class UserRoomMembershipCommandService {
      * @return 추가된 멤버의 정보 (RoomMemberDto)
      */
     @Transactional
-    public RoomMemberDTO addMemberToRoom(
+    public RoomMemberResponse addMemberToRoom(
             Long requestingUserId,
             Long roomId,
             RoomMemberAddRequest request
@@ -71,7 +71,7 @@ public class UserRoomMembershipCommandService {
         membershipRepository.save(newMembership);
 
         // 6. DTO 변환 및 반환
-        return RoomMemberDTO.of(targetUser, newMembership.getRole());
+        return RoomMemberResponse.of(targetUser, newMembership.getRole());
     }
 
     /**

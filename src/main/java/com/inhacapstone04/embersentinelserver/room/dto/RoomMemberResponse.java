@@ -4,15 +4,15 @@ import com.inhacapstone04.embersentinelserver.room.entity.MembershipRole;
 import com.inhacapstone04.embersentinelserver.user.entity.AuthType;
 import com.inhacapstone04.embersentinelserver.user.entity.User;
 
-public record RoomMemberDTO(
+public record RoomMemberResponse(
         Long userId,
         String nickname,
         String profileImageUrl,
         AuthType authType,
         String role // "VIEWER" or "EDITOR" or "ADMIN"
 ) {
-    public static RoomMemberDTO of(User user, MembershipRole role) {
-        return new RoomMemberDTO(
+    public static RoomMemberResponse of(User user, MembershipRole role) {
+        return new RoomMemberResponse(
                 user.getId(),
                 user.getNickname(),
                 user.getProfileImageUrl(),

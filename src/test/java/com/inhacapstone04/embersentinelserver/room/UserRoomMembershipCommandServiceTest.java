@@ -2,7 +2,7 @@ package com.inhacapstone04.embersentinelserver.room;
 
 import com.inhacapstone04.embersentinelserver.common.exception.CustomException;
 import com.inhacapstone04.embersentinelserver.common.exception.ErrorCode;
-import com.inhacapstone04.embersentinelserver.room.dto.RoomMemberDTO;
+import com.inhacapstone04.embersentinelserver.room.dto.RoomMemberResponse;
 import com.inhacapstone04.embersentinelserver.room.dto.request.RoomMemberAddRequest;
 import com.inhacapstone04.embersentinelserver.room.entity.MembershipRole;
 import com.inhacapstone04.embersentinelserver.room.entity.Room;
@@ -87,7 +87,7 @@ class UserRoomMembershipCommandServiceTest {
         RoomMemberAddRequest request = new RoomMemberAddRequest(targetUser.getEmail(), MembershipRole.VIEWER);
 
         // When
-        RoomMemberDTO result = userRoomMembershipCommandService.addMemberToRoom(requestingUserId, roomId, request);
+        RoomMemberResponse result = userRoomMembershipCommandService.addMemberToRoom(requestingUserId, roomId, request);
 
         // Then
         // 1. 응답 DTO 검증
