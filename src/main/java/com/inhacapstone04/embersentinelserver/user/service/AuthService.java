@@ -54,7 +54,14 @@ public class AuthService {
         String serverAccessToken = jwtUtil.generateAccessToken(user.getId());
         String serverRefreshToken = jwtUtil.generateRefreshToken(user.getId());
 
-        // 4. 응답 DTO 생성 (요청 스펙에 맞게 만료 시간을 '초' 단위로 변환)
+        // 4. Refresh Token을 Redis에 저장 (key: "RT:<userId>", value: token, TTL 설정)
+        redisService.setValues(
+                "RT:" + user.getId(),
+                serverRefreshToken,
+                Duration.ofMillis(refreshTokenExpirationTime)
+        );
+
+        // 5. 응답 DTO 생성 (요청 스펙에 맞게 만료 시간을 '초' 단위로 변환)
         Long expiresInSeconds = accessTokenExpirationMs / 1000;
 
         return AuthInfoResponse.of(serverAccessToken, serverRefreshToken, expiresInSeconds, isNewUser);
