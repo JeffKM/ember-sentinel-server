@@ -1,6 +1,6 @@
 package com.inhacapstone04.embersentinelserver.room.repository;
 
-import com.inhacapstone04.embersentinelserver.camera_edge.dto.CameraEdgeDTO;
+import com.inhacapstone04.embersentinelserver.camera_edge.dto.CameraEdgeWithIsFireDTO;
 import com.inhacapstone04.embersentinelserver.media.entity.StreamingStatus;
 import com.inhacapstone04.embersentinelserver.room.dto.RoomStatisticsDTO;
 import com.inhacapstone04.embersentinelserver.room.entity.Room;
@@ -95,7 +95,7 @@ public interface RoomRepository extends JpaRepository<Room, Long> {
      * 'LIVE' 상태인 화재 정보가 없더라도 카메라 목록은 조회되어야 합니다.
      * CameraDto(record 아님)의 생성자를 호출합니다.
      */
-    @Query("SELECT NEW com.inhacapstone04.embersentinelserver.camera_edge.dto.CameraEdgeDTO(" +
+    @Query("SELECT NEW com.inhacapstone04.embersentinelserver.camera_edge.dto.CameraEdgeWithIsFireDTO(" +
             "   c.id, c.deviceUuid, c.cameraEdgeAlias, f.id, ms.streamingStatus" +
             ") " +
             "FROM CameraEdge c " +
@@ -104,5 +104,5 @@ public interface RoomRepository extends JpaRepository<Room, Long> {
             "   WITH ms.streamingStatus = :status " +
             "WHERE c.room.id = :roomId " +
             "ORDER BY c.id ASC") // 카메라 정렬 순서
-    List<CameraEdgeDTO> findCameraDetailsByRoomId(@Param("roomId") Long roomId, @Param("status") StreamingStatus status);
+    List<CameraEdgeWithIsFireDTO> findCameraDetailsByRoomId(@Param("roomId") Long roomId, @Param("status") StreamingStatus status);
 }

@@ -3,7 +3,7 @@ package com.inhacapstone04.embersentinelserver.camera_edge.dto;
 import com.inhacapstone04.embersentinelserver.camera_edge.entity.CameraEdge;
 import com.inhacapstone04.embersentinelserver.media.entity.StreamingStatus;
 
-public record CameraEdgeDTO(
+public record CameraEdgeWithIsFireDTO(
         Long cameraId,
         String deviceGuid,
         String cameraEdgeAlias,
@@ -21,12 +21,12 @@ public record CameraEdgeDTO(
      * @param fireEventId (f.id)
      * @param status (ms.streamingStatus)
      */
-    public CameraEdgeDTO(Long cameraId, String deviceUuid, String cameraEdgeAlias, Long fireEventId, StreamingStatus status) {
+    public CameraEdgeWithIsFireDTO(Long cameraId, String deviceUuid, String cameraEdgeAlias, Long fireEventId, StreamingStatus status) {
         this(cameraId, deviceUuid, cameraEdgeAlias, (status == StreamingStatus.LIVE), (status == StreamingStatus.LIVE ? fireEventId : null));
     }
 
-    public static CameraEdgeDTO of(CameraEdge cameraEdge, Long fireEventId, StreamingStatus status) {
-        return new CameraEdgeDTO(
+    public static CameraEdgeWithIsFireDTO of(CameraEdge cameraEdge, Long fireEventId, StreamingStatus status) {
+        return new CameraEdgeWithIsFireDTO(
                 cameraEdge.getId(),
                 cameraEdge.getDeviceUuid(),
                 cameraEdge.getCameraEdgeAlias(),

@@ -1,6 +1,6 @@
 package com.inhacapstone04.embersentinelserver.room.service;
 
-import com.inhacapstone04.embersentinelserver.camera_edge.dto.CameraEdgeDTO;
+import com.inhacapstone04.embersentinelserver.camera_edge.dto.CameraEdgeWithIsFireDTO;
 import com.inhacapstone04.embersentinelserver.common.exception.CustomException;
 import com.inhacapstone04.embersentinelserver.common.exception.ErrorCode;
 import com.inhacapstone04.embersentinelserver.common.response.PageResponse;
@@ -107,7 +107,7 @@ public class RoomQueryService {
 
         // 3. [Camera + Fire 정보 조회] N+1 방지 쿼리 사용
         // 'LIVE' 상태만 조회하기 위해 StreamingStatus.LIVE를 파라미터로 넘김
-        List<CameraEdgeDTO> cameras = roomRepository.findCameraDetailsByRoomId(roomId, StreamingStatus.LIVE);
+        List<CameraEdgeWithIsFireDTO> cameras = roomRepository.findCameraDetailsByRoomId(roomId, StreamingStatus.LIVE);
 
         // 4. DTO 조립 및 반환
         // (Room 엔티티에는 Member 목록이 이미 채워져 있음)

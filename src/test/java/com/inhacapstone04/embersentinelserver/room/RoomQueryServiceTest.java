@@ -2,7 +2,7 @@ package com.inhacapstone04.embersentinelserver.room;
 
 import com.inhacapstone04.embersentinelserver.building.entity.Building;
 import com.inhacapstone04.embersentinelserver.building.repository.BuildingRepository;
-import com.inhacapstone04.embersentinelserver.camera_edge.dto.CameraEdgeDTO;
+import com.inhacapstone04.embersentinelserver.camera_edge.dto.CameraEdgeWithIsFireDTO;
 import com.inhacapstone04.embersentinelserver.camera_edge.entity.CameraEdge;
 import com.inhacapstone04.embersentinelserver.camera_edge.repository.CameraEdgeRepository;
 import com.inhacapstone04.embersentinelserver.common.exception.CustomException;
@@ -208,13 +208,13 @@ class RoomQueryServiceTest {
         assertThat(response.cameras()).hasSize(2);
 
         // camA1 (LIVE 이벤트 존재)
-        CameraEdgeDTO camA1_dto = findCamera(response, camA1.getId());
+        CameraEdgeWithIsFireDTO camA1_dto = findCamera(response, camA1.getId());
         assertThat(camA1_dto.cameraEdgeAlias()).isEqualTo(camA1.getCameraEdgeAlias());
         assertThat(camA1_dto.isFireOccurring()).isTrue(); // LIVE 상태이므로
         assertThat(camA1_dto.fireEventId()).isEqualTo(eventA_Live.getId()); // LIVE 이벤트 ID
 
         // camA2 (ENDED 이벤트 존재 -> 쿼리 결과 null)
-        CameraEdgeDTO camA2_dto = findCamera(response, camA2.getId());
+        CameraEdgeWithIsFireDTO camA2_dto = findCamera(response, camA2.getId());
         assertThat(camA2_dto.cameraEdgeAlias()).isEqualTo(camA2.getCameraEdgeAlias());
         assertThat(camA2_dto.isFireOccurring()).isFalse(); // LIVE가 아니므로
         assertThat(camA2_dto.fireEventId()).isNull(); // LIVE가 아니므로
@@ -312,7 +312,7 @@ class RoomQueryServiceTest {
     }
 
     // [신규 헬퍼] 상세 조회 응답에서 특정 카메라 찾기
-    private CameraEdgeDTO findCamera(RoomDetailResponse response, Long cameraId) {
+    private CameraEdgeWithIsFireDTO findCamera(RoomDetailResponse response, Long cameraId) {
         return response.cameras().stream()
                 .filter(c -> c.cameraId().equals(cameraId))
                 .findFirst()

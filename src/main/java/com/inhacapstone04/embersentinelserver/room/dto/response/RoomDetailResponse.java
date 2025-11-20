@@ -1,6 +1,6 @@
 package com.inhacapstone04.embersentinelserver.room.dto.response;
 
-import com.inhacapstone04.embersentinelserver.camera_edge.dto.CameraEdgeDTO;
+import com.inhacapstone04.embersentinelserver.camera_edge.dto.CameraEdgeWithIsFireDTO;
 import com.inhacapstone04.embersentinelserver.room.dto.MembershipDTO;
 import com.inhacapstone04.embersentinelserver.room.entity.Room;
 
@@ -14,9 +14,9 @@ public record RoomDetailResponse(
         String floor,
         String roomNumber,
         List<MembershipDTO> members,
-        List<CameraEdgeDTO> cameras
+        List<CameraEdgeWithIsFireDTO> cameras
 ) {
-    public static RoomDetailResponse of(Room room, List<CameraEdgeDTO> cameras) {
+    public static RoomDetailResponse of(Room room, List<CameraEdgeWithIsFireDTO> cameras) {
         // Room 엔티티에 N+1 없이 조회된 멤버 목록을 DTO로 변환
         List<MembershipDTO> members = room.getUserMemberships().stream()
                 .map(MembershipDTO::of)
