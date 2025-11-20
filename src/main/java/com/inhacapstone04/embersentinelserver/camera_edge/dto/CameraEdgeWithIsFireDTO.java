@@ -5,7 +5,7 @@ import com.inhacapstone04.embersentinelserver.media.entity.StreamingStatus;
 
 public record CameraEdgeWithIsFireDTO(
         Long cameraId,
-        String deviceGuid,
+        String deviceUuid,
         String cameraEdgeAlias,
         boolean isFireOccurring, // 현재 화재 발생 여부
         Long fireEventId // 화재 발생 시 fire_event_id
