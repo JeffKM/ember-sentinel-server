@@ -79,12 +79,31 @@ public class JwtUtil {
         } catch (ExpiredJwtException e) {
             // (JWT 파싱 실패, 만료 등)
             throw new CustomException(ErrorCode.ACCESS_TOKEN_EXPIRED);
-        } catch (SecurityException | MalformedJwtException | SignatureException | UnsupportedJwtException e) {
-            // SecurityException, MalformedJwtException, SignatureException, UnsupportedJwtException
+        } catch (SecurityException | MalformedJwtException | UnsupportedJwtException e) {
+            // SecurityException, MalformedJwtException, UnsupportedJwtException
             throw new CustomException(ErrorCode.INVALID_TOKEN);
         } catch (IllegalArgumentException e) {
             // 토큰이 비어있거나 인자가 잘못된 경우
             throw new CustomException(ErrorCode.EMPTY_TOKEN, "Token is empty or invalid.");
+        } catch (Exception e) {
+            // 그 외 모든 인증 실패
+            throw new CustomException(ErrorCode.AUTHENTICATION_FAILED);
+        }
+    }
+
+    /**
+     * Refresh Token 유효성 검사
+     * 만료 시 REFRESH_TOKEN_EXPIRED 예외를 던져 Access Token과 구분
+     */
+    public void validateRefreshToken(String token) {
+        try {
+            getClaims(token);
+        } catch (ExpiredJwtException e) {
+            // Refresh Token 만료
+            throw new CustomException(ErrorCode.REFRESH_TOKEN_EXPIRED); // 👈 새로운 ErrorCode 필요
+        } catch (SecurityException | MalformedJwtException | UnsupportedJwtException | IllegalArgumentException e) {
+            // 서명/형식/인자 오류
+            throw new CustomException(ErrorCode.INVALID_TOKEN);
         } catch (Exception e) {
             // 그 외 모든 인증 실패
             throw new CustomException(ErrorCode.AUTHENTICATION_FAILED);

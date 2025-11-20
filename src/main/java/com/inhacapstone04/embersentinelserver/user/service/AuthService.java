@@ -1,5 +1,8 @@
 package com.inhacapstone04.embersentinelserver.user.service;
 
+import com.inhacapstone04.embersentinelserver.common.exception.CustomException;
+import com.inhacapstone04.embersentinelserver.common.exception.ErrorCode;
+import com.inhacapstone04.embersentinelserver.common.service.RedisService;
 import com.inhacapstone04.embersentinelserver.common.util.JwtUtil;
 import com.inhacapstone04.embersentinelserver.user.config.OAuth2ClientProvider;
 import com.inhacapstone04.embersentinelserver.user.dto.AuthInfoResponse;
@@ -12,6 +15,8 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
+import java.time.Duration;
+
 @Service
 @RequiredArgsConstructor
 public class AuthService {
@@ -19,9 +24,13 @@ public class AuthService {
     private final UserCommandService userCommandService;
     private final JwtUtil jwtUtil;
     private final OAuth2ClientProvider oAuth2ClientProvider;
+    private final RedisService redisService;
 
     @Value("${jwt.access-token-expiration-ms}")
     private long accessTokenExpirationMs;
+
+    @Value("${jwt.refresh-token-expiration-ms}")
+    private long refreshTokenExpirationTime;
 
     /**
      * 소셜 로그인 (및 자동 회원가입)
@@ -49,5 +58,40 @@ public class AuthService {
         Long expiresInSeconds = accessTokenExpirationMs / 1000;
 
         return AuthInfoResponse.of(serverAccessToken, serverRefreshToken, expiresInSeconds, isNewUser);
+    }
+
+    /**
+     * Refresh Token을 사용하여 Access Token과 Refresh Token을 재발급합니다.
+     */
+    public AuthInfoResponse reissueToken(String refreshToken) {
+
+        // 1. Refresh Token 유효성 검사 (만료 여부 포함)
+        // Refresh Token이 만료된 경우 CustomException(REFRESH_TOKEN_EXPIRED)를 던짐
+        jwtUtil.validateRefreshToken(refreshToken);
+
+        // 2. Refresh Token에서 userId 추출
+        Long userId = jwtUtil.getUserIdFromToken(refreshToken);
+
+        // 3. 해당 userId로 저장된 Refresh Token이 클라이언트가 보낸 토큰과 일치하는지 확인해야 합니다.
+        //    불일치 시 throw new CustomException(ErrorCode.INVALID_TOKEN);
+        String storedToken = redisService.getValues("RT:" + userId);
+        if (!refreshToken.equals(storedToken)) {
+            throw new CustomException(ErrorCode.INVALID_TOKEN, "Token mismatch. Possible theft attempt.");
+        }
+
+        // 4. 새 Access Token 발급
+        String newAccessToken = jwtUtil.generateAccessToken(userId);
+
+        // 5. 새 Refresh Token 발급 (Rotation)
+        String newRefreshToken = jwtUtil.generateRefreshToken(userId);
+
+        // 6. 새로 발급된 Refresh Token을 DB/Redis에 저장(업데이트)해야 합니다.
+        redisService.setValues("RT:" + userId, newRefreshToken, Duration.ofMillis(refreshTokenExpirationTime));
+
+        // 7. 응답 DTO 생성
+        Long expiresInSeconds = accessTokenExpirationMs / 1000;
+
+        // 재발급이므로 isNewUser는 false
+        return AuthInfoResponse.of(newAccessToken, newRefreshToken, expiresInSeconds, false);
     }
 }
