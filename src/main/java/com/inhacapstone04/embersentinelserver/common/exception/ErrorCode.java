@@ -30,12 +30,13 @@ public enum ErrorCode {
     INVALID_FILE_EXTENSIONS(HttpStatus.BAD_REQUEST, "파일 형식이 유효하지 않습니다."),
 
     // service
-    NOT_FOUND_BY_ID(HttpStatus.BAD_REQUEST, "해당 ID로 존재하는 정보가 없습니다."),
-    NOT_AUTHORIZED_ACCESS_BY_ID(HttpStatus.BAD_REQUEST, "권한이 없는 리소스에 접근중이거나, 잘못된 리소스 ID를 사용해 접근중입니다."),
+    NOT_FOUND_BY_ID(HttpStatus.NOT_FOUND, "해당 ID로 존재하는 정보가 없습니다."),
+    NOT_AUTHORIZED_ACCESS_BY_ID(HttpStatus.FORBIDDEN, "권한이 없는 리소스에 접근중이거나, 잘못된 리소스 ID를 사용해 접근중입니다."),
     USER_NOT_FOUND(HttpStatus.BAD_REQUEST, "해당 ID로 존재하는 사용자 정보가 없습니다."),
     NOT_FOUND_BY_EMAIL(HttpStatus.NOT_FOUND, "해당 이메일로 존재하는 사용자 정보가 없습니다."),
     ALREADY_MEMBER_OF_ROOM(HttpStatus.CONFLICT, "해당 사용자는 이미 Room에 등록된 사용자입니다."),
-    CANNOT_REMOVE_SELF(HttpStatus.BAD_REQUEST, "자신에 대한 정보를 스스로 삭제할 수 없습니다.");
+    CANNOT_REMOVE_SELF(HttpStatus.BAD_REQUEST, "자신에 대한 정보를 스스로 삭제할 수 없습니다."),
+    DUPLICATE_DEVICE_UUID(HttpStatus.CONFLICT, "이미 존재하는 device UUID입니다.");
 
     private final HttpStatus httpStatus;
     private final String message;
