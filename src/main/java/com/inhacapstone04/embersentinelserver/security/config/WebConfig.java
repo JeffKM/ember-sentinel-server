@@ -34,7 +34,10 @@ public class WebConfig implements WebMvcConfigurer {
                         // --- Swagger/API Docs ---
                         "/v3/api-docs/**",
                         "/swagger-ui/**",
-                        "/swagger-resources/**"
+                        "/swagger-resources/**",
+
+                        // --- RasberryPI ---
+                        "/embedded/**"
                 );
     }
 
