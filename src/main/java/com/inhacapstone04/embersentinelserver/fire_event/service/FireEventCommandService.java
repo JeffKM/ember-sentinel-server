@@ -4,6 +4,7 @@ import com.inhacapstone04.embersentinelserver.camera_edge.entity.CameraEdge;
 import com.inhacapstone04.embersentinelserver.camera_edge.repository.CameraEdgeRepository;
 import com.inhacapstone04.embersentinelserver.common.exception.CustomException;
 import com.inhacapstone04.embersentinelserver.common.exception.ErrorCode;
+import com.inhacapstone04.embersentinelserver.common.service.FcmService;
 import com.inhacapstone04.embersentinelserver.common.util.LiveKitUtil;
 import com.inhacapstone04.embersentinelserver.fire_event.dto.request.FireEventStartRequest;
 import com.inhacapstone04.embersentinelserver.fire_event.dto.response.FireEventStreamInfoResponse;
@@ -38,6 +39,7 @@ public class FireEventCommandService {
     private final LiveKitUtil liveKitUtil;
     private final RoomServiceClient roomServiceClient;
     private final EgressServiceClient egressServiceClient;
+    private final FcmService fcmService;
 
     /**
      * 화재 감지 시 이벤트를 생성하고 스트리밍 환경을 구축합니다. (Publisher용)
@@ -119,7 +121,13 @@ public class FireEventCommandService {
                 true, false
         );
 
-        // TODO:: FCM으로 사용자에게 push 알림 전송 로직 작성
+        // 7. FCM 알림 발송 (비동기 호출), 트랜잭션이 커밋된 후 발송되거나, 별도 스레드에서 실행됨
+        fcmService.sendFireAlert(
+                camera.getRoom().getId(),
+                camera.getRoom().getRoomAlias(),
+                fireEvent.getId(),
+                camera.getCameraEdgeAlias()
+        );
 
         return FireEventStreamInfoResponse.of(token, livekitRoomName, fireEvent.getId());
     }
