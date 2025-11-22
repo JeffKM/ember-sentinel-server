@@ -9,8 +9,7 @@ public record UserInfoResponse(
         String nickname,
         String profileImageUrl,
         UserRole userRole,
-        AuthType authType,
-        String endpointArn
+        AuthType authType
 ) {
     public static UserInfoResponse of(User user) {
         return new UserInfoResponse(
@@ -18,8 +17,7 @@ public record UserInfoResponse(
                 user.getNickname(),
                 user.getProfileImageUrl(),
                 user.getUserRole(),
-                user.getAuthType(),
-                user.getEndpointArn()
+                user.getAuthType()
         );
     }
 }

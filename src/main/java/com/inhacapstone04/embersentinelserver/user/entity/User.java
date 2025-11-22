@@ -37,8 +37,8 @@ public class User extends BaseEntity {
     @Column(name = "auth_type", nullable = false)
     private AuthType authType;
 
-    @Column(name = "endpoint_arn")
-    private String endpointArn;
+    @Column(name = "fcm_token")
+    private String fcmToken;
 
     @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<UserRoomMembership> roomMemberships = new ArrayList<>();
