@@ -34,4 +34,9 @@ public interface UserRoomMembershipRepository extends JpaRepository<UserRoomMemb
     boolean existsByUser_IdAndRoom_Id(Long userId, Long roomId);
 
     Optional<UserRoomMembership> findByUser_IdAndRoom_Id(Long requestingUserId, Long roomId);
+
+    // 특정 Room의 멤버들 중 FCM 토큰이 있는 유저들의 토큰 목록 조회
+    @Query("SELECT u.fcmToken FROM UserRoomMembership urm JOIN urm.user u " +
+            "WHERE urm.room.id = :roomId AND u.fcmToken IS NOT NULL AND u.fcmToken <> ''")
+    List<String> findAllFcmTokensByRoomId(@Param("roomId") Long roomId);
 }
