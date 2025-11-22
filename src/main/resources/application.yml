@@ -57,3 +57,6 @@ oauth:
   kakao:
     # Kakao 사용자 정보 조회 API
     userinfo-uri: https://kapi.kakao.com/v2/user/me
+
+fcm:
+  key-path: ${FCM_KEY_PATH:secrets/firebase-service-account.json}
