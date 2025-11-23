@@ -1,5 +1,7 @@
 package com.inhacapstone04.embersentinelserver.user.service;
 
+import com.inhacapstone04.embersentinelserver.common.exception.CustomException;
+import com.inhacapstone04.embersentinelserver.common.exception.ErrorCode;
 import com.inhacapstone04.embersentinelserver.user.dto.UserLoginResultDTO;
 import com.inhacapstone04.embersentinelserver.user.entity.User;
 import com.inhacapstone04.embersentinelserver.user.entity.UserRole;
@@ -54,5 +56,22 @@ public class UserCommandService {
         }
 
         return UserLoginResultDTO.of(user, isNewUser);
+    }
+
+    /**
+     * 사용자의 FCM 토큰을 등록하거나 갱신합니다.
+     *
+     * @param userId   요청한 사용자 ID
+     * @param fcmToken 저장할 FCM 토큰
+     */
+    @Transactional
+    public void updateFcmToken(Long userId, String fcmToken) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new CustomException(ErrorCode.NOT_FOUND_BY_ID, "사용자를 찾을 수 없습니다."));
+
+        // 기존 토큰과 다를 경우에만 업데이트 (Dirty Checking)
+        if (!fcmToken.equals(user.getFcmToken())) {
+            user.setFcmToken(fcmToken);
+        }
     }
 }
