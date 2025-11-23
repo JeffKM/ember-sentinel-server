@@ -1,6 +1,6 @@
 package com.inhacapstone04.embersentinelserver.fire_event.controller;
 
-import com.inhacapstone04.embersentinelserver.common.service.LiveKitWebhookService;
+import com.inhacapstone04.embersentinelserver.common.service.LiveKitWebhookEventSeperationService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
@@ -11,7 +11,7 @@ import org.springframework.web.bind.annotation.*;
 @Slf4j
 public class FireEventWebhookController {
 
-    private final LiveKitWebhookService liveKitWebhookService;
+    private final LiveKitWebhookEventSeperationService liveKitWebhookEventSeperationService;
 
     /**
      * LiveKit 서버로부터 Webhook 이벤트를 수신합니다.
@@ -29,7 +29,7 @@ public class FireEventWebhookController {
         }
 
         // 비즈니스 로직은 Service로 위임
-        liveKitWebhookService.handleWebhookEvent(body, authHeader);
+        liveKitWebhookEventSeperationService.handleWebhookEvent(body, authHeader);
 
         // LiveKit 서버에 200 OK 응답 (처리가 비동기거나 실패하더라도 재전송 방지를 위해 OK 반환 권장)
         return ResponseEntity.ok("ok");
