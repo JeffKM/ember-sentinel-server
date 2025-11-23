@@ -5,6 +5,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.inhacapstone04.embersentinelserver.common.exception.CustomException;
 import com.inhacapstone04.embersentinelserver.common.exception.ErrorCode;
+import com.inhacapstone04.embersentinelserver.common.service.LiveKitManagementService;
 import com.inhacapstone04.embersentinelserver.media.entity.MediaStream;
 import com.inhacapstone04.embersentinelserver.media.entity.StreamingStatus;
 import com.inhacapstone04.embersentinelserver.media.repository.MediaStreamRepository;
@@ -19,51 +20,90 @@ import org.springframework.transaction.annotation.Transactional;
 public class FireEventWebhookService {
 
     private final MediaStreamRepository mediaStreamRepository;
-    private final ObjectMapper objectMapper; // JSON 파싱을 위해 주입
+    private final ObjectMapper objectMapper;
+    private final LiveKitManagementService liveKitManagementService;
 
     /**
-     * 참여자 입장(participant_joined) Webhook 이벤트를 처리합니다.
-     * 메타데이터를 확인하여 Publisher(라즈베리파이)인 경우 스트리밍 상태를 LIVE로 변경합니다.
-     *
-     * @param metadataJson LiveKit 참여자 메타데이터 (JSON String)
+     * [Webhook] 참여자 입장(participant_joined) 처리
+     * Publisher(라즈베리파이)가 입장하면 DB 상태를 LIVE로 변경합니다.
      */
     @Transactional
     public void processParticipantJoined(String metadataJson) {
-        if (metadataJson == null || metadataJson.isEmpty()) {
-            log.debug("Metadata is empty, skipping logic.");
-            return;
-        }
+        if (metadataJson == null || metadataJson.isEmpty()) return;
 
         try {
-            // 1. JSON 파싱
             JsonNode metadataNode = objectMapper.readTree(metadataJson);
 
-            // 2. 참여자 타입 확인 ("type": "PUBLISHER" 인지 검증)
-            if (metadataNode.has("type") && "PUBLISHER".equals(metadataNode.get("type").asText())) {
+            if (isPublisher(metadataNode)) {
+                Long fireEventId = extractFireEventId(metadataNode);
+                if (fireEventId == null) return;
 
-                // 3. FireEvent ID 추출
-                if (!metadataNode.has("fireEventId")) {
-                    log.warn("Publisher metadata missing fireEventId: {}", metadataJson);
-                    return;
-                }
-                Long fireEventId = metadataNode.get("fireEventId").asLong();
+                MediaStream mediaStream = findMediaStream(fireEventId);
 
-                // 4. MediaStream 조회 및 상태 업데이트 (PENDING -> LIVE)
-                MediaStream mediaStream = mediaStreamRepository.findByFireEvent_Id(fireEventId)
-                        .orElseThrow(() -> new CustomException(ErrorCode.NOT_FOUND_BY_ID, "MediaStream not found for FireEvent ID: " + fireEventId));
-
-                // 이미 LIVE거나 ENDED인 경우 불필요한 업데이트 방지
+                // 스트리밍 상태 업데이트 (PENDING -> LIVE)
                 if (mediaStream.getStreamingStatus() == StreamingStatus.PENDING) {
                     mediaStream.setStreamingStatus(StreamingStatus.LIVE);
                     log.info("Streaming Status Updated to LIVE for FireEvent ID: {}", fireEventId);
                 }
-            } else {
-                log.debug("Participant is not a PUBLISHER. Ignoring.");
+            }
+        } catch (JsonProcessingException e) {
+            log.error("Failed to parse participant metadata: {}", metadataJson, e);
+        }
+    }
+
+    /**
+     * [Webhook] 참여자 퇴장(participant_disconnected) 처리
+     * Publisher(라즈베리파이)가 연결을 끊으면 DB 상태를 ENDED로 변경하고 LiveKit 방을 종료시킵니다.
+     */
+    @Transactional
+    public void processParticipantDisconnected(String metadataJson, String roomName) {
+        if (metadataJson == null || metadataJson.isEmpty()) return;
+
+        try {
+            JsonNode metadataNode = objectMapper.readTree(metadataJson);
+
+            if (isPublisher(metadataNode)) {
+                log.info("Publisher disconnected from room: {}. Ending fire event.", roomName);
+
+                Long fireEventId = extractFireEventId(metadataNode);
+                if (fireEventId == null) return;
+
+                // 1. DB 상태 업데이트 (LIVE -> ENDED)
+                MediaStream mediaStream = findMediaStream(fireEventId);
+
+                if (mediaStream.getStreamingStatus() != StreamingStatus.ENDED) {
+                    mediaStream.setStreamingStatus(StreamingStatus.ENDED);
+                    log.info("Streaming Status Updated to ENDED for FireEvent ID: {}", fireEventId);
+                }
+
+                // 2. [위임] LiveKit Room 강제 삭제 요청 (Egress도 자동 종료됨)
+                // DB 로직이 끝난 후 인프라 정리 요청
+                liveKitManagementService.deleteRoom(roomName);
             }
 
         } catch (JsonProcessingException e) {
-            log.error("Failed to parse participant metadata: {}", metadataJson, e);
-            // Webhook 처리는 실패하더라도 200 OK를 반환해야 LiveKit이 재전송하지 않으므로 예외를 로그만 남김
+            log.error("Failed to parse participant metadata on disconnect", e);
+        } catch (Exception e) {
+            log.error("Error processing publisher disconnection", e);
         }
+    }
+
+    // --- Helper Methods ---
+
+    private boolean isPublisher(JsonNode metadataNode) {
+        return metadataNode.has("type") && "PUBLISHER".equals(metadataNode.get("type").asText());
+    }
+
+    private Long extractFireEventId(JsonNode metadataNode) {
+        if (!metadataNode.has("fireEventId")) {
+            log.warn("Publisher metadata missing fireEventId");
+            return null;
+        }
+        return metadataNode.get("fireEventId").asLong();
+    }
+
+    private MediaStream findMediaStream(Long fireEventId) {
+        return mediaStreamRepository.findByFireEvent_Id(fireEventId)
+                .orElseThrow(() -> new CustomException(ErrorCode.NOT_FOUND_BY_ID, "MediaStream not found for FireEvent ID: " + fireEventId));
     }
 }

@@ -14,18 +14,12 @@ import org.springframework.stereotype.Service;
 @Service
 @RequiredArgsConstructor
 @Slf4j
-public class LiveKitWebhookService {
+public class LiveKitWebhookEventSeperationService {
 
     private final WebhookReceiver webhookReceiver;
     private final MediaRecordCommandService mediaRecordCommandService;
     private final FireEventWebhookService fireEventWebhookService;
 
-    /**
-     * LiveKit Webhook 이벤트를 수신하여 검증하고, 적절한 도메인 서비스로 분배합니다.
-     *
-     * @param body       Webhook 요청 본문
-     * @param authHeader Authorization 헤더 (서명)
-     */
     public void handleWebhookEvent(String body, String authHeader) {
         try {
             // 1. 서명 검증
@@ -33,10 +27,14 @@ public class LiveKitWebhookService {
             String eventType = event.getEvent();
             log.info("LiveKit Webhook Verified: {}", eventType);
 
-            // 2. 이벤트 타입별 로직 분기 (Routing)
+            // 2. 이벤트 타입별 로직 분기
             switch (eventType) {
                 case "participant_joined":
                     handleParticipantJoined(event);
+                    break;
+                case "participant_left":
+                case "participant_disconnected":
+                    handleParticipantDisconnected(event);
                     break;
                 case "egress_ended":
                     handleEgressEnded(event);
@@ -54,9 +52,21 @@ public class LiveKitWebhookService {
     private void handleParticipantJoined(LivekitWebhook.WebhookEvent event) {
         if (event.hasParticipant()) {
             String metadata = event.getParticipant().getMetadata();
-
+            // [수정됨] DB 상태 변경 로직이 있는 FireEventWebhookService 호출
             if (metadata != null && !metadata.isEmpty()) {
                 fireEventWebhookService.processParticipantJoined(metadata);
+            }
+        }
+    }
+
+    private void handleParticipantDisconnected(LivekitWebhook.WebhookEvent event) {
+        if (event.hasParticipant()) {
+            String metadata = event.getParticipant().getMetadata();
+            String roomName = event.getRoom().getName();
+
+            // [수정됨] DB 상태 변경 및 종료 처리를 위해 FireEventWebhookService 호출
+            if (metadata != null && !metadata.isEmpty()) {
+                fireEventWebhookService.processParticipantDisconnected(metadata, roomName);
             }
         }
     }
@@ -67,7 +77,6 @@ public class LiveKitWebhookService {
 
             if (egressInfo.getStatus() == LivekitEgress.EgressStatus.EGRESS_COMPLETE) {
                 String roomName = egressInfo.getRoomName();
-
                 // File Output의 경우 location에 S3 URL이 담김
                 if (egressInfo.hasFile()) {
                     String s3Url = egressInfo.getFile().getLocation();
