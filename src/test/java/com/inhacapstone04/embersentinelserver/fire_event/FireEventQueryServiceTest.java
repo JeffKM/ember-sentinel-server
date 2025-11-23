@@ -9,6 +9,7 @@ import com.inhacapstone04.embersentinelserver.common.exception.ErrorCode;
 import com.inhacapstone04.embersentinelserver.common.response.PageResponse;
 import com.inhacapstone04.embersentinelserver.fire_event.dto.FireEventSimpleDTO;
 import com.inhacapstone04.embersentinelserver.fire_event.dto.response.FireEventDetailResponse;
+import com.inhacapstone04.embersentinelserver.fire_event.dto.response.FireEventWatchResponse;
 import com.inhacapstone04.embersentinelserver.fire_event.entity.FireCause;
 import com.inhacapstone04.embersentinelserver.fire_event.entity.FireEvent;
 import com.inhacapstone04.embersentinelserver.fire_event.repository.FireEventRepository;
@@ -56,7 +57,7 @@ class FireEventQueryServiceTest {
     @Autowired private MediaStreamRepository mediaStreamRepository;
     @Autowired private MediaRecordRepository mediaRecordRepository;
 
-    @Autowired private EntityManager em; // [추가] EntityManager 주입
+    @Autowired private EntityManager em;
 
     private User memberUser;
     private User strangerUser;
@@ -91,9 +92,6 @@ class FireEventQueryServiceTest {
         createMediaStream(eventA, "stream-key-a");
         createMediaRecord(eventA, "s3/path/record-a.mp4");
 
-        // [핵심 추가] 영속성 컨텍스트 초기화
-        // 위에서 save한 데이터들이 DB에 반영되고, 1차 캐시를 비워야
-        // 테스트 로직(getFireEventDetail) 실행 시 DB에서 연관 관계(MediaStream 등)를 포함하여 새로 조회함.
         em.flush();
         em.clear();
     }
@@ -115,13 +113,10 @@ class FireEventQueryServiceTest {
         assertThat(response).isNotNull();
         assertThat(response.id()).isEqualTo(eventId);
         assertThat(response.cameraInfo().deviceUuid()).isEqualTo(cameraA.getDeviceUuid());
-        // DTO에서 null 처리를 했으므로 안전하게 접근 가능, 데이터가 있다면 값 검증
         if (response.streamInfo() != null) {
-            assertThat(response.streamInfo().livekitRoomName()).isEqualTo("stream-key-a"); // createMediaStream에서 설정한 값 확인 (DTO 필드명에 맞게 수정 필요)
+            assertThat(response.streamInfo().livekitRoomName()).isEqualTo("stream-key-a");
         }
     }
-
-    // ... (나머지 테스트 케이스는 동일하게 유지) ...
 
     @Test
     @DisplayName("상세 조회 실패: 요청자가 방의 멤버가 아님 (403 FORBIDDEN)")
@@ -150,10 +145,7 @@ class FireEventQueryServiceTest {
     @Test
     @DisplayName("상세 조회 실패: 이벤트는 존재하지만 요청한 방에 속하지 않음 (404 NOT_FOUND - 보안상)")
     void getFireEventDetail_Fail_EventInDifferentRoom() {
-        // Given
         FireEvent eventB = createFireEvent(cameraB);
-        // eventB 저장 후에도 flush가 필요할 수 있으나 setUp 이후 개별 동작이므로
-        // 여기서는 단순 ID 조회 테스트라 괜찮을 수 있음. 확실히 하려면 save 후 flush 권장.
         em.flush();
         em.clear();
 
@@ -190,13 +182,11 @@ class FireEventQueryServiceTest {
     @Test
     @DisplayName("목록 조회 실패: 요청자가 방의 멤버가 아님 (403 FORBIDDEN)")
     void getFireEventList_Fail_NotMember() {
-        // Given
         Long userId = strangerUser.getId();
         Long roomId = roomA.getId();
         Long cameraEdgeId = cameraA.getId();
         Pageable pageable = PageRequest.of(0, 10);
 
-        // When & Then
         assertThatThrownBy(() -> fireEventQueryService.getFireEventList(userId, roomId, cameraEdgeId, pageable))
                 .isInstanceOf(CustomException.class)
                 .hasFieldOrPropertyWithValue("code", ErrorCode.NOT_AUTHORIZED_ACCESS_BY_ID);
@@ -205,13 +195,11 @@ class FireEventQueryServiceTest {
     @Test
     @DisplayName("목록 조회 실패: 카메라가 존재하지 않음 (404 NOT_FOUND)")
     void getFireEventList_Fail_CameraNotFound() {
-        // Given
         Long userId = memberUser.getId();
         Long roomId = roomA.getId();
         Long nonExistentCameraId = 9999L;
         Pageable pageable = PageRequest.of(0, 10);
 
-        // When & Then
         assertThatThrownBy(() -> fireEventQueryService.getFireEventList(userId, roomId, nonExistentCameraId, pageable))
                 .isInstanceOf(CustomException.class)
                 .hasFieldOrPropertyWithValue("code", ErrorCode.NOT_FOUND_BY_ID);
@@ -220,19 +208,104 @@ class FireEventQueryServiceTest {
     @Test
     @DisplayName("목록 조회 실패: 카메라가 요청한 방에 속하지 않음 (404 NOT_FOUND)")
     void getFireEventList_Fail_CameraInDifferentRoom() {
-        // Given
         Long userId = memberUser.getId();
-        Long roomId = roomA.getId(); // 요청은 Room A로 보냄
-        Long cameraEdgeIdInRoomB = cameraB.getId(); // 카메라는 Room B 소속
+        Long roomId = roomA.getId();
+        Long cameraEdgeIdInRoomB = cameraB.getId();
         Pageable pageable = PageRequest.of(0, 10);
 
-        // When & Then
         assertThatThrownBy(() -> fireEventQueryService.getFireEventList(userId, roomId, cameraEdgeIdInRoomB, pageable))
                 .isInstanceOf(CustomException.class)
                 .hasFieldOrPropertyWithValue("code", ErrorCode.NOT_FOUND_BY_ID);
     }
 
-    // --- Helper Methods (데이터 생성) ---
+    // --- getFireEventWatchToken Tests (신규 추가) ---
+
+    @Test
+    @DisplayName("시청 토큰 발급 성공: 멤버가 화재 상황 시청을 위한 토큰 요청")
+    void getFireEventWatchToken_Success() {
+        // Given
+        Long userId = memberUser.getId();
+        Long roomId = roomA.getId();
+        Long eventId = eventA.getId();
+
+        // When
+        FireEventWatchResponse response = fireEventQueryService.getFireEventWatchToken(userId, roomId, eventId);
+
+        // Then
+        assertThat(response).isNotNull();
+        assertThat(response.livekitRoomName()).isEqualTo("stream-key-a"); // setUp에서 설정한 streamKey
+        assertThat(response.subscriberToken()).isNotNull().isNotEmpty();
+        // 토큰 내용은 LiveKit 서버 로직이라 상세 검증은 어렵지만 발급 여부 확인
+    }
+
+    @Test
+    @DisplayName("시청 토큰 발급 실패: 요청자가 방의 멤버가 아님 (403 FORBIDDEN)")
+    void getFireEventWatchToken_Fail_NotMember() {
+        // Given
+        Long userId = strangerUser.getId();
+        Long roomId = roomA.getId();
+        Long eventId = eventA.getId();
+
+        // When & Then
+        assertThatThrownBy(() -> fireEventQueryService.getFireEventWatchToken(userId, roomId, eventId))
+                .isInstanceOf(CustomException.class)
+                .hasFieldOrPropertyWithValue("code", ErrorCode.NOT_AUTHORIZED_ACCESS_BY_ID);
+    }
+
+    @Test
+    @DisplayName("시청 토큰 발급 실패: 이벤트가 존재하지 않음 (404 NOT_FOUND)")
+    void getFireEventWatchToken_Fail_EventNotFound() {
+        // Given
+        Long userId = memberUser.getId();
+        Long roomId = roomA.getId();
+        Long nonExistentEventId = 9999L;
+
+        // When & Then
+        assertThatThrownBy(() -> fireEventQueryService.getFireEventWatchToken(userId, roomId, nonExistentEventId))
+                .isInstanceOf(CustomException.class)
+                .hasFieldOrPropertyWithValue("code", ErrorCode.NOT_FOUND_BY_ID);
+    }
+
+    @Test
+    @DisplayName("시청 토큰 발급 실패: 이벤트가 다른 방에 속함 (404 NOT_FOUND)")
+    void getFireEventWatchToken_Fail_EventInDifferentRoom() {
+        // Given
+        // Room B의 카메라 B에서 발생한 이벤트 생성
+        FireEvent eventB = createFireEvent(cameraB);
+        createMediaStream(eventB, "stream-key-b");
+        em.flush();
+        em.clear();
+
+        Long userId = memberUser.getId();
+        Long roomId = roomA.getId();
+        Long eventIdInRoomB = eventB.getId();
+
+        // When & Then
+        assertThatThrownBy(() -> fireEventQueryService.getFireEventWatchToken(userId, roomId, eventIdInRoomB))
+                .isInstanceOf(CustomException.class)
+                .hasFieldOrPropertyWithValue("code", ErrorCode.NOT_FOUND_BY_ID);
+    }
+
+    @Test
+    @DisplayName("시청 토큰 발급 실패: 이벤트에 대한 미디어 스트림 정보가 없음 (404 NOT_FOUND)")
+    void getFireEventWatchToken_Fail_NoMediaStream() {
+        // Given
+        // 미디어 스트림이 없는 이벤트 생성
+        FireEvent eventNoStream = createFireEvent(cameraA);
+        em.flush();
+        em.clear();
+
+        Long userId = memberUser.getId();
+        Long roomId = roomA.getId();
+        Long eventId = eventNoStream.getId();
+
+        // When & Then
+        assertThatThrownBy(() -> fireEventQueryService.getFireEventWatchToken(userId, roomId, eventId))
+                .isInstanceOf(CustomException.class)
+                .hasFieldOrPropertyWithValue("code", ErrorCode.NOT_FOUND_BY_ID);
+    }
+
+    // --- Helper Methods ---
 
     private User createUser(String email, String nickname) {
         User user = new User();
@@ -273,7 +346,7 @@ class FireEventQueryServiceTest {
     private FireEvent createFireEvent(CameraEdge camera) {
         FireEvent event = new FireEvent();
         event.setCameraEdge(camera);
-        event.setFireCause(FireCause.가스);
+        event.setFireCause(FireCause.기타);
         event.setRiskRank(1L);
         return fireEventRepository.save(event);
     }
@@ -281,7 +354,7 @@ class FireEventQueryServiceTest {
     private MediaStream createMediaStream(FireEvent event, String streamKey) {
         MediaStream stream = new MediaStream();
         stream.setFireEvent(event);
-        stream.setLivekitRoomName(streamKey); // DTO 필드명에 맞춰 수정 (streamKey -> livekitRoomName 가정)
+        stream.setLivekitRoomName(streamKey);
         stream.setStreamingStatus(StreamingStatus.ENDED);
         return mediaStreamRepository.save(stream);
     }
