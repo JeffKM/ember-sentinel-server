@@ -112,7 +112,10 @@ public class FireEventCommandService {
         }
 
         // 6. Publisher Token 생성
-        String metadata = "{\"type\":\"PUBLISHER\", \"cameraId\":" + camera.getId() + "}";
+        String metadata = "{\"type\":\"PUBLISHER\", \"cameraId\":" + camera.getId() +
+                ", \"fireEventId\":" + fireEvent.getId() +
+                ", \"roomId\":" + camera.getRoom().getId() + "}";
+
         String token = liveKitUtil.createToken(
                 livekitRoomName,
                 "cam_" + camera.getId(),
