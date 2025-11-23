@@ -1,7 +1,7 @@
 package com.inhacapstone04.embersentinelserver.user.service;
 
 import com.inhacapstone04.embersentinelserver.common.exception.CustomException;
-import com.inhacapstone04.embersentinelserver.user.dto.UserInfoResponse;
+import com.inhacapstone04.embersentinelserver.user.dto.response.UserInfoResponse;
 import com.inhacapstone04.embersentinelserver.user.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;

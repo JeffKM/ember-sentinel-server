@@ -1,4 +1,4 @@
-package com.inhacapstone04.embersentinelserver.user.dto;
+package com.inhacapstone04.embersentinelserver.user.dto.response;
 
 import com.inhacapstone04.embersentinelserver.user.entity.AuthType;
 import com.inhacapstone04.embersentinelserver.user.entity.User;

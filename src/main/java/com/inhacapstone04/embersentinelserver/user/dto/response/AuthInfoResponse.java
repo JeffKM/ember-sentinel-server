@@ -1,4 +1,4 @@
-package com.inhacapstone04.embersentinelserver.user.dto;
+package com.inhacapstone04.embersentinelserver.user.dto.response;
 
 public record AuthInfoResponse(
         String grantType,

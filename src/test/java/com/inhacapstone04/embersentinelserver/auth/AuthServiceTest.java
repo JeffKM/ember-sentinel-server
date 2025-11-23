@@ -4,7 +4,7 @@ import com.inhacapstone04.embersentinelserver.common.exception.CustomException;
 import com.inhacapstone04.embersentinelserver.common.exception.ErrorCode;
 import com.inhacapstone04.embersentinelserver.common.service.RedisService;
 import com.inhacapstone04.embersentinelserver.common.util.JwtUtil;
-import com.inhacapstone04.embersentinelserver.user.dto.AuthInfoResponse;
+import com.inhacapstone04.embersentinelserver.user.dto.response.AuthInfoResponse;
 import com.inhacapstone04.embersentinelserver.user.service.AuthService;
 import com.inhacapstone04.embersentinelserver.user.service.UserCommandService;
 import org.junit.jupiter.api.BeforeEach;

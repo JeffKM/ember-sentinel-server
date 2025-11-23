@@ -1,7 +1,7 @@
 package com.inhacapstone04.embersentinelserver.user.controller;
 
-import com.inhacapstone04.embersentinelserver.user.dto.OAuthLoginRequest;
-import com.inhacapstone04.embersentinelserver.user.dto.AuthInfoResponse;
+import com.inhacapstone04.embersentinelserver.user.dto.request.OAuthLoginRequest;
+import com.inhacapstone04.embersentinelserver.user.dto.response.AuthInfoResponse;
 import com.inhacapstone04.embersentinelserver.user.entity.AuthType;
 import com.inhacapstone04.embersentinelserver.user.service.AuthService;
 import jakarta.validation.Valid;

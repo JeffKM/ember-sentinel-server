@@ -5,7 +5,7 @@ import com.inhacapstone04.embersentinelserver.common.exception.ErrorCode;
 import com.inhacapstone04.embersentinelserver.common.service.RedisService;
 import com.inhacapstone04.embersentinelserver.common.util.JwtUtil;
 import com.inhacapstone04.embersentinelserver.user.config.OAuth2ClientProvider;
-import com.inhacapstone04.embersentinelserver.user.dto.AuthInfoResponse;
+import com.inhacapstone04.embersentinelserver.user.dto.response.AuthInfoResponse;
 import com.inhacapstone04.embersentinelserver.user.dto.UserLoginResultDTO;
 import com.inhacapstone04.embersentinelserver.user.entity.AuthType;
 import com.inhacapstone04.embersentinelserver.user.entity.User;

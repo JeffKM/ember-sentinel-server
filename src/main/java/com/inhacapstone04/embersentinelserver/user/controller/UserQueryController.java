@@ -1,7 +1,7 @@
 package com.inhacapstone04.embersentinelserver.user.controller;
 
 import com.inhacapstone04.embersentinelserver.common.resolver.AuthorizedUser;
-import com.inhacapstone04.embersentinelserver.user.dto.UserInfoResponse;
+import com.inhacapstone04.embersentinelserver.user.dto.response.UserInfoResponse;
 import com.inhacapstone04.embersentinelserver.user.service.UserQueryService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
