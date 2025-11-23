@@ -8,10 +8,10 @@ WORKDIR /app
 COPY build/libs/*.jar app.jar
 
 # 4. 키 파일을 컨테이너로 복사
-COPY src/main/resources/secrets/firebase-service-account.json /app/firebase-service-account.json
+COPY src/main/resources/secrets/ember-sentinel-firebase-admin-sdk.json /app/ember-sentinel-firebase-admin-sdk.json
 
 # 5. Firebase Credential Env 설정
-ENV GOOGLE_APPLICATION_CREDENTIALS="/app/firebase-service-account.json"
+ENV GOOGLE_APPLICATION_CREDENTIALS="/app/ember-sentinel-firebase-admin-sdkt.json"
 
 # 6. 애플리케이션 포트 노출
 EXPOSE 8080

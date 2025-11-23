@@ -59,4 +59,4 @@ oauth:
     userinfo-uri: https://kapi.kakao.com/v2/user/me
 
 fcm:
-  key-path: ${FCM_KEY_PATH:secrets/firebase-service-account.json}
+  key-path: ${FCM_KEY_PATH:secrets/ember-sentinel-firebase-admin-sdk.json}
