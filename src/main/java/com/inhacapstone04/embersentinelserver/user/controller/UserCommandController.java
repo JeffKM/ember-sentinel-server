@@ -2,6 +2,7 @@ package com.inhacapstone04.embersentinelserver.user.controller;
 
 import com.inhacapstone04.embersentinelserver.common.resolver.AuthorizedUser;
 import com.inhacapstone04.embersentinelserver.user.dto.request.FcmTokenRequest;
+import com.inhacapstone04.embersentinelserver.user.dto.request.PushAlarmRequest;
 import com.inhacapstone04.embersentinelserver.user.service.UserCommandService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -28,6 +29,18 @@ public class UserCommandController {
             @Valid @RequestBody FcmTokenRequest request
     ) {
         userCommandService.updateFcmToken(userId, request.fcmToken());
+        return ResponseEntity.ok().build();
+    }
+
+    /**
+     * 상대방의 이메일을 통해 상대방에게 푸쉬 알림을 전송하는 API
+     * API: POST /user/fcm/token
+     */
+    @PostMapping("/fcm/push")
+    public ResponseEntity<Void> sendPushAlarmByFcmn(
+            @Valid @RequestBody PushAlarmRequest request
+    ) {
+        userCommandService.sendSimpleAlertByFcm(request);
         return ResponseEntity.ok().build();
     }
 }

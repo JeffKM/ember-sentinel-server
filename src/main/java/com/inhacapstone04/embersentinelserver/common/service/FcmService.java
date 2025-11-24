@@ -1,9 +1,6 @@
 package com.inhacapstone04.embersentinelserver.common.service;
 
-import com.google.firebase.messaging.BatchResponse;
-import com.google.firebase.messaging.FirebaseMessaging;
-import com.google.firebase.messaging.MulticastMessage;
-import com.google.firebase.messaging.Notification;
+import com.google.firebase.messaging.*;
 import com.inhacapstone04.embersentinelserver.room.repository.UserRoomMembershipRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -61,6 +58,41 @@ public class FcmService {
 
         } catch (Exception e) {
             log.error("Failed to send FCM alert", e);
+        }
+    }
+
+    /**
+     * 특정 사용자(토큰)에게 간단한 알림 메시지를 전송합니다. (비동기 처리)
+     *
+     * @param token 대상 사용자의 FCM 토큰
+     * @param alertBody 알림 내용
+     */
+    @Async
+    public void sendSimpleAlertByFcm(String token, String alertBody) {
+        try {
+            // 1. 알림 구성 (제목은 기본값으로 설정, 필요시 파라미터로 분리 가능)
+            Notification notification = Notification.builder()
+                    .setTitle("[Ember Sentinel] 알림")
+                    .setBody(alertBody)
+                    .build();
+
+            // 2. 단일 메시지 구성
+            Message message = Message.builder()
+                    .setToken(token)
+                    .setNotification(notification)
+                    // 필요하다면 추가 데이터 payload를 넣을 수 있습니다.
+                    // .putData("type", "SIMPLE_ALERT")
+                    .build();
+
+            // 3. 발송
+            String response = firebaseMessaging.send(message);
+            log.info("Simple FCM sent successfully. Response: {}", response);
+
+        } catch (FirebaseMessagingException e) {
+            // FCM 전송 실패 시 에러 코드 등에 따라 처리가 필요할 수 있음 (예: 토큰 만료 등)
+            log.error("Failed to send simple FCM to token: {}", token, e);
+        } catch (Exception e) {
+            log.error("Unexpected error during FCM sending", e);
         }
     }
 }

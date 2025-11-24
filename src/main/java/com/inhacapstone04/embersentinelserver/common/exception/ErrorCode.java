@@ -37,7 +37,8 @@ public enum ErrorCode {
     ALREADY_MEMBER_OF_ROOM(HttpStatus.CONFLICT, "해당 사용자는 이미 Room에 등록된 사용자입니다."),
     CANNOT_REMOVE_SELF(HttpStatus.BAD_REQUEST, "자신에 대한 정보를 스스로 삭제할 수 없습니다."),
     LIVEKIT_SERVER_ERROR(HttpStatus.INTERNAL_SERVER_ERROR, "LiveKit 서버와 통신 중 오류가 발생했습니다."),
-    DUPLICATE_DEVICE_UUID(HttpStatus.CONFLICT, "이미 존재하는 device UUID입니다.");
+    DUPLICATE_DEVICE_UUID(HttpStatus.CONFLICT, "이미 존재하는 device UUID입니다."),
+    NOT_FOUND_FCM_TOKEN(HttpStatus.NOT_FOUND, "해당 사용자에게 등록된 FCM 토큰이 존재하지 않습니다.");
 
     private final HttpStatus httpStatus;
     private final String message;

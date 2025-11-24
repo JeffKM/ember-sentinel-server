@@ -2,14 +2,17 @@ package com.inhacapstone04.embersentinelserver.user.service;
 
 import com.inhacapstone04.embersentinelserver.common.exception.CustomException;
 import com.inhacapstone04.embersentinelserver.common.exception.ErrorCode;
+import com.inhacapstone04.embersentinelserver.common.service.FcmService;
 import com.inhacapstone04.embersentinelserver.user.dto.UserLoginResultDTO;
 import com.inhacapstone04.embersentinelserver.user.dto.request.EmailLoginRequest;
+import com.inhacapstone04.embersentinelserver.user.dto.request.PushAlarmRequest;
 import com.inhacapstone04.embersentinelserver.user.entity.AuthType;
 import com.inhacapstone04.embersentinelserver.user.entity.User;
 import com.inhacapstone04.embersentinelserver.user.entity.UserRole;
 import com.inhacapstone04.embersentinelserver.user.entity.oauth.OAuth2UserInfo;
 import com.inhacapstone04.embersentinelserver.user.repository.UserRepository;
 import jakarta.transaction.Transactional;
+import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotNull;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -23,6 +26,7 @@ import java.util.Optional;
 public class UserCommandService {
 
     private final UserRepository userRepository;
+    private final FcmService fcmService;
 
     /**
      * OAuth 정보로 사용자를 찾거나, 없으면 새로 생성(회원가입)합니다.
@@ -98,5 +102,16 @@ public class UserCommandService {
         });
 
         return UserLoginResultDTO.of(user, isNewUser);
+    }
+
+    public void sendSimpleAlertByFcm(@Valid PushAlarmRequest request) {
+        // 1. 사용자 조회 (email, authType 기준)
+        User user = userRepository.findByEmailAndAuthType(request.email(), request.authType())
+                .orElseThrow(() -> new CustomException(ErrorCode.NOT_FOUND_BY_EMAIL));
+
+        if (user.getFcmToken() == null  || user.getFcmToken().isEmpty())
+            throw new CustomException(ErrorCode.NOT_FOUND_FCM_TOKEN);
+
+        fcmService.sendSimpleAlertByFcm(user.getFcmToken(), request.alertBody());
     }
 }
