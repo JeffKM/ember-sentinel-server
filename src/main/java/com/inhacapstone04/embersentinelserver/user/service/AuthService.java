@@ -5,12 +5,14 @@ import com.inhacapstone04.embersentinelserver.common.exception.ErrorCode;
 import com.inhacapstone04.embersentinelserver.common.service.RedisService;
 import com.inhacapstone04.embersentinelserver.common.util.JwtUtil;
 import com.inhacapstone04.embersentinelserver.user.config.OAuth2ClientProvider;
+import com.inhacapstone04.embersentinelserver.user.dto.request.EmailLoginRequest;
 import com.inhacapstone04.embersentinelserver.user.dto.response.AuthInfoResponse;
 import com.inhacapstone04.embersentinelserver.user.dto.UserLoginResultDTO;
 import com.inhacapstone04.embersentinelserver.user.entity.AuthType;
 import com.inhacapstone04.embersentinelserver.user.entity.User;
 import com.inhacapstone04.embersentinelserver.user.entity.oauth.OAuth2UserInfo;
 import com.inhacapstone04.embersentinelserver.user.service.oauth.OAuth2ClientService;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
@@ -100,5 +102,29 @@ public class AuthService {
 
         // 재발급이므로 isNewUser는 false
         return AuthInfoResponse.of(newAccessToken, newRefreshToken, expiresInSeconds, false);
+    }
+
+    public AuthInfoResponse loginByEmail(AuthType authType, @Valid EmailLoginRequest request) {
+        // 1. 사용자 조회 또는 신규 등록 (UserCommandService에 위임)
+        UserLoginResultDTO loginResult = userCommandService.findOrCreateUserByEmail(request);
+
+        User user = loginResult.user();
+        boolean isNewUser = loginResult.isNewUser();
+
+        // 2. 서버 자체 JWT 발급
+        String serverAccessToken = jwtUtil.generateAccessToken(user.getId());
+        String serverRefreshToken = jwtUtil.generateRefreshToken(user.getId());
+
+        // 3. Refresh Token을 Redis에 저장 (key: "RT:<userId>", value: token, TTL 설정)
+        redisService.setValues(
+                "RT:" + user.getId(),
+                serverRefreshToken,
+                Duration.ofMillis(refreshTokenExpirationTime)
+        );
+
+        // 4. 응답 DTO 생성 (요청 스펙에 맞게 만료 시간을 '초' 단위로 변환)
+        Long expiresInSeconds = accessTokenExpirationMs / 1000;
+
+        return AuthInfoResponse.of(serverAccessToken, serverRefreshToken, expiresInSeconds, isNewUser);
     }
 }

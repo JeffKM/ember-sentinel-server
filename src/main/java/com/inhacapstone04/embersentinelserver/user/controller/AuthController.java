@@ -1,5 +1,6 @@
 package com.inhacapstone04.embersentinelserver.user.controller;
 
+import com.inhacapstone04.embersentinelserver.user.dto.request.EmailLoginRequest;
 import com.inhacapstone04.embersentinelserver.user.dto.request.OAuthLoginRequest;
 import com.inhacapstone04.embersentinelserver.user.dto.response.AuthInfoResponse;
 import com.inhacapstone04.embersentinelserver.user.entity.AuthType;
@@ -33,6 +34,15 @@ public class AuthController {
     ) {
         // AuthType.KAKAO와 3rd-party 토큰을 서비스로 전달
         AuthInfoResponse response = authService.login(AuthType.KAKAO, request.accessToken());
+        return ResponseEntity.ok(response);
+    }
+
+    @PostMapping("/email")
+    public ResponseEntity<AuthInfoResponse> loginUserEmail(
+            @Valid @RequestBody EmailLoginRequest request
+    ) {
+        // AuthType.EMAIL과 request를 서비스로 전달
+        AuthInfoResponse response = authService.loginByEmail(AuthType.EMAIL, request);
         return ResponseEntity.ok(response);
     }
 

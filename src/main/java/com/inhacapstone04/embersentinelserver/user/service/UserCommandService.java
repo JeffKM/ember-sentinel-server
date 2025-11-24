@@ -3,11 +3,14 @@ package com.inhacapstone04.embersentinelserver.user.service;
 import com.inhacapstone04.embersentinelserver.common.exception.CustomException;
 import com.inhacapstone04.embersentinelserver.common.exception.ErrorCode;
 import com.inhacapstone04.embersentinelserver.user.dto.UserLoginResultDTO;
+import com.inhacapstone04.embersentinelserver.user.dto.request.EmailLoginRequest;
+import com.inhacapstone04.embersentinelserver.user.entity.AuthType;
 import com.inhacapstone04.embersentinelserver.user.entity.User;
 import com.inhacapstone04.embersentinelserver.user.entity.UserRole;
 import com.inhacapstone04.embersentinelserver.user.entity.oauth.OAuth2UserInfo;
 import com.inhacapstone04.embersentinelserver.user.repository.UserRepository;
 import jakarta.transaction.Transactional;
+import jakarta.validation.constraints.NotNull;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
@@ -73,5 +76,27 @@ public class UserCommandService {
         if (!fcmToken.equals(user.getFcmToken())) {
             user.setFcmToken(fcmToken);
         }
+    }
+
+    public UserLoginResultDTO findOrCreateUserByEmail(EmailLoginRequest request) {
+        // 1. 사용자 조회 (email, authType 기준)
+        Optional<User> existingUserOptional = userRepository.findByEmailAndAuthType(request.email(), AuthType.EMAIL);
+
+        // 2. 신규 유저인지 미리 판단, Optional이 비어있으면(isEmpty) 신규 유저입니다.
+        boolean isNewUser = existingUserOptional.isEmpty();
+
+        // 3. User 객체 가져오기 (있으면 가져오고, 없으면 람다 실행)
+        User user = existingUserOptional.orElseGet(() -> {
+            // 신규 유저인 경우 (회원가입)
+            User newUser = new User();
+            newUser.setEmail(request.email());
+            newUser.setNickname(request.nickname());
+            newUser.setProfileImageUrl(null);
+            newUser.setAuthType(AuthType.EMAIL);
+            newUser.setUserRole(UserRole.USER);
+            return userRepository.save(newUser);
+        });
+
+        return UserLoginResultDTO.of(user, isNewUser);
     }
 }
