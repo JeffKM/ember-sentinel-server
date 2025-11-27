@@ -82,7 +82,7 @@ class RoomQueryServiceTest {
         // 2. 빌딩 생성
         Building building = createBuilding("하이테크센터");
 
-        // 3. 방 생성
+        // 3. 방 생성 (Floor, RoomNumber 설정 포함)
         roomA = createRoom("정보보안연구실", "3", "305", building);
         roomB = createRoom("지능형보안연구실", "11", "1105", building);
         roomC_OtherUser = createRoom("서버실", "5", "501", building);
@@ -98,11 +98,11 @@ class RoomQueryServiceTest {
         camB1 = createCamera(roomB, "cam-B1-uuid", "B1-서버랙"); // roomB (카메라 1대)
 
         // 6. 화재 이벤트 및 미디어 스트림 생성
-        // roomA - camA1: LIVE 이벤트 1개
+        // roomA - camA1: LIVE 이벤트 1개 -> DTO 변환 시 isFireOccurring = true여야 함
         eventA_Live = createFireEvent(camA1);
         createMediaStream(eventA_Live, StreamingStatus.LIVE);
 
-        // roomA - camA2: ENDED 이벤트 1개 (카운트되면 안 됨)
+        // roomA - camA2: ENDED 이벤트 1개 -> DTO 변환 시 isFireOccurring = false여야 함
         FireEvent eventA_Ended = createFireEvent(camA2);
         createMediaStream(eventA_Ended, StreamingStatus.ENDED);
     }
@@ -184,6 +184,8 @@ class RoomQueryServiceTest {
                 .hasFieldOrPropertyWithValue("code", ErrorCode.NOT_AUTHORIZED_ACCESS_BY_ID);
     }
 
+    // --- getRoomDetail (상세 조회) 테스트 ---
+
     @Test
     @DisplayName("Room 상세 조회 성공 (화재 O, 화재 X 카메라 동시 조회)")
     void getRoomDetail_Success() {
@@ -207,17 +209,23 @@ class RoomQueryServiceTest {
         // then (3. 카메라 및 화재 정보)
         assertThat(response.cameras()).hasSize(2);
 
-        // camA1 (LIVE 이벤트 존재)
+        // camA1 (LIVE 이벤트 존재) -> isFireOccurring = true
+        // [수정] CameraEdgeWithIsFireDTO 타입 사용
         CameraEdgeWithIsFireDTO camA1_dto = findCamera(response, camA1.getId());
         assertThat(camA1_dto.cameraEdgeAlias()).isEqualTo(camA1.getCameraEdgeAlias());
         assertThat(camA1_dto.isFireOccurring()).isTrue(); // LIVE 상태이므로
         assertThat(camA1_dto.fireEventId()).isEqualTo(eventA_Live.getId()); // LIVE 이벤트 ID
 
-        // camA2 (ENDED 이벤트 존재 -> 쿼리 결과 null)
+        // [추가됨] 새로 추가된 필드 검증 (Floor, RoomNumber)
+        assertThat(camA1_dto.locationFloor()).isEqualTo(roomA.getBuildingLocationFloor());
+        assertThat(camA1_dto.roomNumber()).isEqualTo(roomA.getRoomNumber());
+
+        // camA2 (ENDED 이벤트 존재 -> 쿼리 결과 false) -> isFireOccurring = false
+        // [수정] CameraEdgeWithIsFireDTO 타입 사용
         CameraEdgeWithIsFireDTO camA2_dto = findCamera(response, camA2.getId());
         assertThat(camA2_dto.cameraEdgeAlias()).isEqualTo(camA2.getCameraEdgeAlias());
         assertThat(camA2_dto.isFireOccurring()).isFalse(); // LIVE가 아니므로
-        assertThat(camA2_dto.fireEventId()).isNull(); // LIVE가 아니므로
+        assertThat(camA2_dto.fireEventId()).isNull(); // LIVE가 아니므로 (생성자 로직에 의해 null)
     }
 
     @Test
@@ -242,6 +250,8 @@ class RoomQueryServiceTest {
 
         // when & then
         // (Auth 로직이 먼저 동작하므로 ROOM_NOT_FOUND가 아닌 FORBIDDEN이 발생)
+        // *참고: 서비스 로직 순서(Auth vs Find)에 따라 기대하는 에러 코드가 다를 수 있음.
+        // 이전에 수정한 로직에 맞춰 NOT_FOUND로 설정.
         assertThatThrownBy(() -> roomQueryService.getRoomDetail(userId, nonExistentRoomId))
                 .isInstanceOf(CustomException.class)
                 .hasFieldOrPropertyWithValue("code", ErrorCode.NOT_FOUND_BY_ID);
@@ -265,6 +275,7 @@ class RoomQueryServiceTest {
         return buildingRepository.save(building);
     }
 
+    // Floor와 RoomNumber를 받도록 수정됨
     private Room createRoom(String alias, String floor, String roomNum, Building building) {
         Room room = new Room();
         room.setRoomAlias(alias);
@@ -311,7 +322,7 @@ class RoomQueryServiceTest {
                 .orElseThrow(() -> new AssertionError("통계 응답에 roomId " + roomId + "가 없습니다."));
     }
 
-    // [신규 헬퍼] 상세 조회 응답에서 특정 카메라 찾기
+    // [신규 헬퍼] 상세 조회 응답에서 특정 카메라 찾기 - 반환 타입 수정
     private CameraEdgeWithIsFireDTO findCamera(RoomDetailResponse response, Long cameraId) {
         return response.cameras().stream()
                 .filter(c -> c.cameraId().equals(cameraId))

@@ -7,6 +7,8 @@ public record CameraEdgeWithIsFireDTO(
         Long cameraId,
         String deviceUuid,
         String cameraEdgeAlias,
+        String locationFloor,
+        String roomNumber,
         boolean isFireOccurring, // 현재 화재 발생 여부
         Long fireEventId // 화재 발생 시 fire_event_id
 ) {
@@ -21,8 +23,8 @@ public record CameraEdgeWithIsFireDTO(
      * @param fireEventId (f.id)
      * @param status (ms.streamingStatus)
      */
-    public CameraEdgeWithIsFireDTO(Long cameraId, String deviceUuid, String cameraEdgeAlias, Long fireEventId, StreamingStatus status) {
-        this(cameraId, deviceUuid, cameraEdgeAlias, (status == StreamingStatus.LIVE), (status == StreamingStatus.LIVE ? fireEventId : null));
+    public CameraEdgeWithIsFireDTO(Long cameraId, String deviceUuid, String cameraEdgeAlias, String locationFloor, String roomNumber, Long fireEventId, StreamingStatus status) {
+        this(cameraId, deviceUuid, cameraEdgeAlias, locationFloor, roomNumber, (status == StreamingStatus.LIVE), (status == StreamingStatus.LIVE ? fireEventId : null));
     }
 
     public static CameraEdgeWithIsFireDTO of(CameraEdge cameraEdge, Long fireEventId, StreamingStatus status) {
@@ -30,6 +32,8 @@ public record CameraEdgeWithIsFireDTO(
                 cameraEdge.getId(),
                 cameraEdge.getDeviceUuid(),
                 cameraEdge.getCameraEdgeAlias(),
+                cameraEdge.getRoom().getBuildingLocationFloor(),
+                cameraEdge.getRoom().getRoomNumber(),
                 (status == StreamingStatus.LIVE),
                 (status == StreamingStatus.LIVE) ? fireEventId : null
         );

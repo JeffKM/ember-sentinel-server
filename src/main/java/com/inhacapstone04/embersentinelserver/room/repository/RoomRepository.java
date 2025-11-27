@@ -93,16 +93,23 @@ public interface RoomRepository extends JpaRepository<Room, Long> {
      * 특정 Room의 카메라 목록 및 라이브 화재 정보 조회
      * CameraEdge(c)를 기준으로 FireEvent(f), MediaStream(ms)을 LEFT JOIN합니다.
      * 'LIVE' 상태인 화재 정보가 없더라도 카메라 목록은 조회되어야 합니다.
-     * CameraDto(record 아님)의 생성자를 호출합니다.
+     * CameraEdgeWithIsFireDTO의 생성자 시그니처에 맞춰 필드 추가
+     * (c.id, c.deviceUuid, c.cameraEdgeAlias, c.room.buildingLocationFloor, c.room.roomNumber, f.id, ms.streamingStatus)
      */
     @Query("SELECT NEW com.inhacapstone04.embersentinelserver.camera_edge.dto.CameraEdgeWithIsFireDTO(" +
-            "   c.id, c.deviceUuid, c.cameraEdgeAlias, f.id, ms.streamingStatus" +
+            "   c.id, " +
+            "   c.deviceUuid, " +
+            "   c.cameraEdgeAlias, " +
+            "   c.room.buildingLocationFloor, " + // 추가됨
+            "   c.room.roomNumber, " +            // 추가됨
+            "   f.id, " +
+            "   ms.streamingStatus" +
             ") " +
             "FROM CameraEdge c " +
             "LEFT JOIN c.fireEvents f " +
             "LEFT JOIN f.mediaStream ms " +
             "   WITH ms.streamingStatus = :status " +
             "WHERE c.room.id = :roomId " +
-            "ORDER BY c.id ASC") // 카메라 정렬 순서
+            "ORDER BY c.id ASC")
     List<CameraEdgeWithIsFireDTO> findCameraDetailsByRoomId(@Param("roomId") Long roomId, @Param("status") StreamingStatus status);
 }
