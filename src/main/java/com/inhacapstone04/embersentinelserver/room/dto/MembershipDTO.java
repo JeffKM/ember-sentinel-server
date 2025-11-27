@@ -6,6 +6,7 @@ import com.inhacapstone04.embersentinelserver.user.entity.User;
 public record MembershipDTO(
         Long userId,
         String nickname,
+        String email,
         String profileImageUrl,
         String role
 ) {
@@ -14,6 +15,7 @@ public record MembershipDTO(
         return new MembershipDTO(
                 user.getId(),
                 user.getNickname(),
+                user.getEmail(),
                 user.getProfileImageUrl(),
                 membership.getRole().name() // MembershipRole Enum을 String으로 변환
         );
