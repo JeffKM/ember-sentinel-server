@@ -6,16 +6,16 @@ import java.time.OffsetDateTime;
 
 public record MediaRecordResponse(
         Long id,
-        String s3BucketPath,
+        String s3PresignedUrl,
         OffsetDateTime createdAt
 ) {
-    public static MediaRecordResponse of(MediaRecord record) {
+    public static MediaRecordResponse of(MediaRecord record, String presignedUrl) {
         if (record == null) {
             return null;
         }
         return new MediaRecordResponse(
                 record.getId(),
-                record.getS3BucketPath(),
+                presignedUrl,
                 record.getCreatedAt()
         );
     }
