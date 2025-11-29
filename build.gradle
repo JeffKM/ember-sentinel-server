@@ -41,6 +41,9 @@ dependencies {
 
     implementation 'com.google.firebase:firebase-admin:9.4.3'
 
+    implementation platform('software.amazon.awssdk:bom:2.21.1')
+    implementation 'software.amazon.awssdk:s3'
+
     implementation 'org.postgresql:postgresql'
 
     implementation 'io.jsonwebtoken:jjwt-api:0.11.5'
