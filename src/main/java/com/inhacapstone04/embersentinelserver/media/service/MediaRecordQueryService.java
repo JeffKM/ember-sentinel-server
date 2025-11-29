@@ -2,6 +2,7 @@ package com.inhacapstone04.embersentinelserver.media.service;
 
 import com.inhacapstone04.embersentinelserver.common.exception.CustomException;
 import com.inhacapstone04.embersentinelserver.common.exception.ErrorCode;
+import com.inhacapstone04.embersentinelserver.common.service.S3Service;
 import com.inhacapstone04.embersentinelserver.fire_event.entity.FireEvent;
 import com.inhacapstone04.embersentinelserver.fire_event.repository.FireEventRepository;
 import com.inhacapstone04.embersentinelserver.media.dto.response.MediaRecordResponse;
@@ -18,6 +19,7 @@ public class MediaRecordQueryService {
 
     private final FireEventRepository fireEventRepository;
     private final UserRoomMembershipRepository membershipRepository;
+    private final S3Service s3Service;
 
     /**
      * 특정 화재 이벤트의 녹화 파일 정보를 조회합니다.
@@ -48,6 +50,15 @@ public class MediaRecordQueryService {
             throw new CustomException(ErrorCode.NOT_FOUND_BY_ID, "해당 이벤트에 대한 녹화 파일이 존재하지 않습니다.");
         }
 
-        return MediaRecordResponse.of(mediaRecord);
+        // 5. Presigned URL 생성
+        String originalPath = mediaRecord.getS3BucketPath();
+        String presignedUrl = s3Service.generatePresignedUrl(originalPath);
+
+        // Response DTO 생성 (presignedUrl 주입)
+        return new MediaRecordResponse(
+                mediaRecord.getId(),
+                presignedUrl, // 원본 대신 서명된 URL 반환
+                mediaRecord.getCreatedAt()
+        );
     }
 }
