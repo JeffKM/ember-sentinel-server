@@ -13,7 +13,6 @@ import com.inhacapstone04.embersentinelserver.user.entity.oauth.OAuth2UserInfo;
 import com.inhacapstone04.embersentinelserver.user.repository.UserRepository;
 import jakarta.transaction.Transactional;
 import jakarta.validation.Valid;
-import jakarta.validation.constraints.NotNull;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
@@ -21,7 +20,6 @@ import java.util.Optional;
 
 @Service
 @RequiredArgsConstructor
-// 이 서비스가 실제 DB CUD를 담당하므로 @Transactional을 붙입니다.
 @Transactional
 public class UserCommandService {
 
