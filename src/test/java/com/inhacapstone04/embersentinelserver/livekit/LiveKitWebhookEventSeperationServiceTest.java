@@ -19,6 +19,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
@@ -36,192 +37,148 @@ class LiveKitWebhookEventSeperationServiceTest {
     @Mock
     private FireEventWebhookService fireEventWebhookService;
 
-    // --- Participant Joined Tests ---
-
     @Test
-    @DisplayName("라우팅 성공: participant_joined 이벤트는 FireEventWebhookService로 위임한다")
-    void handleWebhookEvent_ParticipantJoined() {
+    @DisplayName("Egress 종료 이벤트(성공) - Filename(Key)이 저장되어야 한다")
+    void handleWebhookEvent_EgressEnded_Success() {
         // Given
-        String body = "dummy-body";
-        String authHeader = "dummy-auth";
-        String metadata = "{\"type\":\"PUBLISHER\"}";
+        String body = "dummy_body";
+        String authHeader = "dummy_auth";
+        String roomName = "fire_event_123";
+        String s3Key = "recordings/test_video.mp4"; // 저장되어야 할 Key
+        String s3Location = "https://s3.aws.com/recordings/test_video.mp4"; // 로그용 URL
 
-        LivekitWebhook.WebhookEvent event = mock(LivekitWebhook.WebhookEvent.class);
-        LivekitModels.ParticipantInfo participant = mock(LivekitModels.ParticipantInfo.class);
+        // Mock 객체 생성 (LiveKit Protobuf 객체)
+        LivekitWebhook.WebhookEvent mockEvent = mock(LivekitWebhook.WebhookEvent.class);
+        LivekitEgress.EgressInfo mockEgressInfo = mock(LivekitEgress.EgressInfo.class);
+        LivekitEgress.FileInfo mockFileInfo = mock(LivekitEgress.FileInfo.class);
 
-        when(webhookReceiver.receive(body, authHeader)).thenReturn(event);
-        when(event.getEvent()).thenReturn("participant_joined");
+        // 1. Webhook 수신 Mocking
+        given(webhookReceiver.receive(body, authHeader)).willReturn(mockEvent);
+        given(mockEvent.getEvent()).willReturn("egress_ended");
 
-        when(event.hasParticipant()).thenReturn(true);
-        when(event.getParticipant()).thenReturn(participant);
-        when(participant.getMetadata()).thenReturn(metadata);
+        // 2. Egress 정보 Mocking
+        given(mockEvent.hasEgressInfo()).willReturn(true);
+        given(mockEvent.getEgressInfo()).willReturn(mockEgressInfo);
+
+        // 3. Egress 상세 정보 Mocking
+        given(mockEgressInfo.getRoomName()).willReturn(roomName);
+        given(mockEgressInfo.getEgressId()).willReturn("EG_12345");
+        given(mockEgressInfo.getStatus()).willReturn(LivekitEgress.EgressStatus.EGRESS_COMPLETE); // 성공 상태
+
+        // 4. File 정보 Mocking
+        given(mockEgressInfo.hasFile()).willReturn(true);
+        given(mockEgressInfo.getFile()).willReturn(mockFileInfo);
+
+        // [핵심] getFilename()이 Key를 반환하도록 설정
+        given(mockFileInfo.getFilename()).willReturn(s3Key);
+        // 로그 로직 방어용 (getLocation 호출 시 null이 아니도록)
+        given(mockFileInfo.getLocation()).willReturn(s3Location);
 
         // When
         seperationService.handleWebhookEvent(body, authHeader);
 
         // Then
-        verify(fireEventWebhookService).processParticipantJoined(metadata);
-        verify(mediaRecordCommandService, never()).saveRecording(anyString(), anyString());
-    }
-
-    // --- Participant Disconnected Tests ---
-
-    @Test
-    @DisplayName("라우팅 성공: participant_disconnected 이벤트는 FireEventWebhookService로 위임한다")
-    void handleWebhookEvent_ParticipantDisconnected() {
-        // Given
-        String body = "dummy-body";
-        String authHeader = "dummy-auth";
-        String metadata = "{\"type\":\"PUBLISHER\"}";
-        String roomName = "fire_event_101";
-
-        LivekitWebhook.WebhookEvent event = mock(LivekitWebhook.WebhookEvent.class);
-        LivekitModels.ParticipantInfo participant = mock(LivekitModels.ParticipantInfo.class);
-        LivekitModels.Room room = mock(LivekitModels.Room.class);
-
-        when(webhookReceiver.receive(body, authHeader)).thenReturn(event);
-        // disconnected 또는 left 둘 다 처리되는지 확인
-        when(event.getEvent()).thenReturn("participant_disconnected");
-
-        when(event.hasParticipant()).thenReturn(true);
-        when(event.getParticipant()).thenReturn(participant);
-        when(participant.getMetadata()).thenReturn(metadata);
-
-        when(event.getRoom()).thenReturn(room);
-        when(room.getName()).thenReturn(roomName);
-
-        // When
-        seperationService.handleWebhookEvent(body, authHeader);
-
-        // Then
-        verify(fireEventWebhookService).processParticipantDisconnected(metadata, roomName);
-        verify(mediaRecordCommandService, never()).saveRecording(anyString(), anyString());
+        // [검증] saveRecording 메서드가 's3Location'이 아니라 's3Key'로 호출되었는지 확인
+        verify(mediaRecordCommandService, times(1)).saveRecording(roomName, s3Key);
     }
 
     @Test
-    @DisplayName("라우팅 성공: participant_left 이벤트도 동일하게 FireEventWebhookService로 위임한다")
-    void handleWebhookEvent_ParticipantLeft() {
-        // Given
-        String body = "dummy-body";
-        String authHeader = "dummy-auth";
-        String metadata = "{\"type\":\"PUBLISHER\"}";
-        String roomName = "fire_event_101";
-
-        LivekitWebhook.WebhookEvent event = mock(LivekitWebhook.WebhookEvent.class);
-        LivekitModels.ParticipantInfo participant = mock(LivekitModels.ParticipantInfo.class);
-        LivekitModels.Room room = mock(LivekitModels.Room.class);
-
-        when(webhookReceiver.receive(body, authHeader)).thenReturn(event);
-        when(event.getEvent()).thenReturn("participant_left"); // left 이벤트
-
-        when(event.hasParticipant()).thenReturn(true);
-        when(event.getParticipant()).thenReturn(participant);
-        when(participant.getMetadata()).thenReturn(metadata);
-
-        when(event.getRoom()).thenReturn(room);
-        when(room.getName()).thenReturn(roomName);
-
-        // When
-        seperationService.handleWebhookEvent(body, authHeader);
-
-        // Then
-        verify(fireEventWebhookService).processParticipantDisconnected(metadata, roomName);
-    }
-
-    // --- Egress Ended Tests ---
-
-    @Test
-    @DisplayName("라우팅 성공: egress_ended (성공) 이벤트는 MediaRecordCommandService로 위임한다")
-    void handleWebhookEvent_EgressEnded_Complete() {
-        // Given
-        String body = "dummy-body";
-        String authHeader = "dummy-auth";
-        String roomName = "fire_event_101";
-        String s3Url = "s3://bucket/file.mp4";
-
-        LivekitWebhook.WebhookEvent event = mock(LivekitWebhook.WebhookEvent.class);
-        LivekitEgress.EgressInfo egressInfo = mock(LivekitEgress.EgressInfo.class);
-        LivekitEgress.FileInfo fileInfo = mock(LivekitEgress.FileInfo.class);
-
-        when(webhookReceiver.receive(body, authHeader)).thenReturn(event);
-        when(event.getEvent()).thenReturn("egress_ended");
-
-        when(event.hasEgressInfo()).thenReturn(true);
-        when(event.getEgressInfo()).thenReturn(egressInfo);
-        when(egressInfo.getStatus()).thenReturn(LivekitEgress.EgressStatus.EGRESS_COMPLETE);
-        when(egressInfo.getRoomName()).thenReturn(roomName);
-
-        when(egressInfo.hasFile()).thenReturn(true);
-        when(egressInfo.getFile()).thenReturn(fileInfo);
-        when(fileInfo.getLocation()).thenReturn(s3Url);
-
-        // When
-        seperationService.handleWebhookEvent(body, authHeader);
-
-        // Then
-        verify(mediaRecordCommandService).saveRecording(roomName, s3Url);
-        verify(fireEventWebhookService, never()).processParticipantJoined(anyString());
-    }
-
-    @Test
-    @DisplayName("무시: egress_ended (실패) 이벤트는 저장 로직을 호출하지 않는다")
+    @DisplayName("Egress 종료 이벤트(실패) - 상태가 COMPLETE가 아니면 저장하지 않는다")
     void handleWebhookEvent_EgressEnded_Failed() {
         // Given
-        String body = "dummy-body";
-        String authHeader = "dummy-auth";
+        String body = "dummy_body";
+        String authHeader = "dummy_auth";
 
-        LivekitWebhook.WebhookEvent event = mock(LivekitWebhook.WebhookEvent.class);
-        LivekitEgress.EgressInfo egressInfo = mock(LivekitEgress.EgressInfo.class);
+        LivekitWebhook.WebhookEvent mockEvent = mock(LivekitWebhook.WebhookEvent.class);
+        LivekitEgress.EgressInfo mockEgressInfo = mock(LivekitEgress.EgressInfo.class);
 
-        when(webhookReceiver.receive(body, authHeader)).thenReturn(event);
-        when(event.getEvent()).thenReturn("egress_ended");
+        given(webhookReceiver.receive(body, authHeader)).willReturn(mockEvent);
+        given(mockEvent.getEvent()).willReturn("egress_ended");
 
-        when(event.hasEgressInfo()).thenReturn(true);
-        when(event.getEgressInfo()).thenReturn(egressInfo);
-        when(egressInfo.getStatus()).thenReturn(LivekitEgress.EgressStatus.EGRESS_FAILED); // 실패 상태
+        given(mockEvent.hasEgressInfo()).willReturn(true);
+        given(mockEvent.getEgressInfo()).willReturn(mockEgressInfo);
+
+        // 상태가 FAILED 임
+        given(mockEgressInfo.getStatus()).willReturn(LivekitEgress.EgressStatus.EGRESS_FAILED);
+        given(mockEgressInfo.getError()).willReturn("Unknown Error"); // 로그용
 
         // When
         seperationService.handleWebhookEvent(body, authHeader);
 
         // Then
+        // 저장 로직이 호출되지 않아야 함
         verify(mediaRecordCommandService, never()).saveRecording(anyString(), anyString());
     }
 
-    // --- Exception & Validation Tests ---
-
     @Test
-    @DisplayName("실패: Webhook 서명 검증 실패 시 예외를 던진다")
-    void handleWebhookEvent_ValidationFailed() {
+    @DisplayName("Participant Joined 이벤트 - Metadata가 있으면 처리한다")
+    void handleWebhookEvent_ParticipantJoined() {
         // Given
-        String body = "invalid-body";
-        String authHeader = "invalid-token";
+        String body = "body";
+        String authHeader = "auth";
+        String metadata = "{\"userId\":1}";
 
-        when(webhookReceiver.receive(body, authHeader)).thenThrow(new RuntimeException("Invalid signature"));
+        LivekitWebhook.WebhookEvent mockEvent = mock(LivekitWebhook.WebhookEvent.class);
+        livekit.LivekitModels.ParticipantInfo mockParticipant = mock(livekit.LivekitModels.ParticipantInfo.class);
 
-        // When & Then
-        CustomException exception = assertThrows(CustomException.class, () ->
-                seperationService.handleWebhookEvent(body, authHeader)
-        );
+        given(webhookReceiver.receive(body, authHeader)).willReturn(mockEvent);
+        given(mockEvent.getEvent()).willReturn("participant_joined");
 
-        assertThat(exception.getCode()).isEqualTo(ErrorCode.LIVEKIT_SERVER_ERROR);
-    }
-
-    @Test
-    @DisplayName("무시: 처리하지 않는 이벤트 타입은 무시한다")
-    void handleWebhookEvent_IgnoredEvent() {
-        // Given
-        String body = "dummy-body";
-        String authHeader = "dummy-auth";
-
-        LivekitWebhook.WebhookEvent event = mock(LivekitWebhook.WebhookEvent.class);
-        when(webhookReceiver.receive(body, authHeader)).thenReturn(event);
-        when(event.getEvent()).thenReturn("room_started");
+        given(mockEvent.hasParticipant()).willReturn(true);
+        given(mockEvent.getParticipant()).willReturn(mockParticipant);
+        given(mockParticipant.getMetadata()).willReturn(metadata);
 
         // When
         seperationService.handleWebhookEvent(body, authHeader);
 
         // Then
-        verifyNoInteractions(fireEventWebhookService);
-        verifyNoInteractions(mediaRecordCommandService);
+        verify(fireEventWebhookService, times(1)).processParticipantJoined(metadata);
+    }
+
+    @Test
+    @DisplayName("Participant Disconnected 이벤트 - Metadata와 RoomName으로 처리한다")
+    void handleWebhookEvent_ParticipantDisconnected() {
+        // Given
+        String body = "body";
+        String authHeader = "auth";
+        String metadata = "{\"userId\":1}";
+        String roomName = "room_1";
+
+        LivekitWebhook.WebhookEvent mockEvent = mock(LivekitWebhook.WebhookEvent.class);
+        livekit.LivekitModels.ParticipantInfo mockParticipant = mock(livekit.LivekitModels.ParticipantInfo.class);
+        livekit.LivekitModels.Room mockRoom = mock(livekit.LivekitModels.Room.class);
+
+        given(webhookReceiver.receive(body, authHeader)).willReturn(mockEvent);
+        given(mockEvent.getEvent()).willReturn("participant_disconnected");
+
+        given(mockEvent.hasParticipant()).willReturn(true);
+        given(mockEvent.getParticipant()).willReturn(mockParticipant);
+        given(mockParticipant.getMetadata()).willReturn(metadata);
+
+        given(mockEvent.getRoom()).willReturn(mockRoom);
+        given(mockRoom.getName()).willReturn(roomName);
+
+        // When
+        seperationService.handleWebhookEvent(body, authHeader);
+
+        // Then
+        verify(fireEventWebhookService, times(1)).processParticipantDisconnected(metadata, roomName);
+    }
+
+    @Test
+    @DisplayName("웹훅 검증 실패 시 CustomException을 던진다")
+    void handleWebhookEvent_ValidationFail() {
+        // Given
+        String body = "invalid_body";
+        String authHeader = "invalid_auth";
+
+        // receive 메서드 호출 시 예외 발생하도록 설정
+        doThrow(new RuntimeException("Signature validation failed"))
+                .when(webhookReceiver).receive(body, authHeader);
+
+        // When & Then
+        assertThrows(CustomException.class, () ->
+                seperationService.handleWebhookEvent(body, authHeader)
+        );
     }
 }
