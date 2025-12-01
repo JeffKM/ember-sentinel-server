@@ -8,6 +8,7 @@ import livekit.LivekitEgress;
 import livekit.LivekitModels;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import retrofit2.Call;
 import retrofit2.Response;
@@ -21,6 +22,12 @@ public class LiveKitManagementService {
 
     private final RoomServiceClient roomServiceClient;
     private final EgressServiceClient egressServiceClient;
+
+    @Value("${cloud.aws.s3.bucket}")
+    private String s3BucketName;
+
+    @Value("${cloud.aws.region.static}")
+    private String awsRegion;
 
     /**
      * LiveKit Room을 생성하고 녹화(Egress)를 시작합니다.
@@ -40,9 +47,15 @@ public class LiveKitManagementService {
             log.info("LiveKit Room created: {}", livekitRoomName);
 
             // 2. Egress 시작
+            LivekitEgress.S3Upload s3Upload = LivekitEgress.S3Upload.newBuilder()
+                    .setBucket(s3BucketName)
+                    .setRegion(awsRegion)
+                    .build();
+
             LivekitEgress.EncodedFileOutput output = LivekitEgress.EncodedFileOutput.newBuilder()
                     .setFileType(LivekitEgress.EncodedFileType.MP4)
-                    .setFilepath("recordings/" + livekitRoomName + ".mp4")
+                    .setFilepath("recordings/" + livekitRoomName + ".mp4") // S3 내 저장 경로 (Key)
+                    .setS3(s3Upload) // <--- 핵심: 로컬 대신 S3를 사용하라는 명령
                     .build();
 
             // SDK 메서드 호출
