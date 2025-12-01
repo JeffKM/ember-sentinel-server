@@ -22,29 +22,37 @@ public class LiveKitWebhookEventSeperationService {
 
     public void handleWebhookEvent(String body, String authHeader) {
         try {
+            // [LOG] 1. 웹훅 수신 시작 로그
+            log.info(">>> [Webhook Start] Received raw body length: {}", body.length());
+
             // 1. 서명 검증
             LivekitWebhook.WebhookEvent event = webhookReceiver.receive(body, authHeader);
             String eventType = event.getEvent();
-            log.info("LiveKit Webhook Verified: {}", eventType);
+
+            // [LOG] 2. 검증 성공 및 이벤트 타입 확인
+            log.info(">>> [Webhook Verified] Event Type: {}", eventType);
 
             // 2. 이벤트 타입별 로직 분기
             switch (eventType) {
                 case "participant_joined":
+                    log.info("--- Handling Participant Joined ---");
                     handleParticipantJoined(event);
                     break;
                 case "participant_left":
                 case "participant_disconnected":
+                    log.info("--- Handling Participant Disconnected ({}) ---", eventType);
                     handleParticipantDisconnected(event);
                     break;
                 case "egress_ended":
+                    log.info("--- Handling Egress Ended ---");
                     handleEgressEnded(event);
                     break;
                 default:
-                    log.debug("Ignored LiveKit Event: {}", eventType);
+                    log.info("--- Ignored Event: {} ---", eventType);
                     break;
             }
         } catch (Exception e) {
-            log.error("Webhook handling failed", e);
+            log.error("!!! Webhook handling failed !!!", e);
             throw new CustomException(ErrorCode.LIVEKIT_SERVER_ERROR, "Webhook validation or processing failed");
         }
     }
@@ -52,10 +60,16 @@ public class LiveKitWebhookEventSeperationService {
     private void handleParticipantJoined(LivekitWebhook.WebhookEvent event) {
         if (event.hasParticipant()) {
             String metadata = event.getParticipant().getMetadata();
-            // [수정됨] DB 상태 변경 로직이 있는 FireEventWebhookService 호출
+            log.info("Participant Joined Metadata: {}", metadata);
+
             if (metadata != null && !metadata.isEmpty()) {
                 fireEventWebhookService.processParticipantJoined(metadata);
+                log.info("Processed Participant Joined logic successfully.");
+            } else {
+                log.warn("Participant Joined but Metadata is empty.");
             }
+        } else {
+            log.warn("Event has no participant info.");
         }
     }
 
@@ -63,29 +77,59 @@ public class LiveKitWebhookEventSeperationService {
         if (event.hasParticipant()) {
             String metadata = event.getParticipant().getMetadata();
             String roomName = event.getRoom().getName();
+            log.info("Participant Disconnected - Room: {}, Metadata: {}", roomName, metadata);
 
-            // [수정됨] DB 상태 변경 및 종료 처리를 위해 FireEventWebhookService 호출
             if (metadata != null && !metadata.isEmpty()) {
                 fireEventWebhookService.processParticipantDisconnected(metadata, roomName);
+                log.info("Processed Participant Disconnected logic successfully.");
+            } else {
+                log.warn("Participant Disconnected but Metadata is empty.");
             }
         }
     }
 
+    // [핵심 수정] 상세 로그가 추가된 메서드
     private void handleEgressEnded(LivekitWebhook.WebhookEvent event) {
-        if (event.hasEgressInfo()) {
-            LivekitEgress.EgressInfo egressInfo = event.getEgressInfo();
+        // 1. EgressInfo 존재 여부 확인
+        if (!event.hasEgressInfo()) {
+            log.error(">>> [Egress Error] 'egress_ended' event received but NO EgressInfo found in payload.");
+            return;
+        }
 
-            if (egressInfo.getStatus() == LivekitEgress.EgressStatus.EGRESS_COMPLETE) {
-                String roomName = egressInfo.getRoomName();
-                // File Output의 경우 location에 S3 URL이 담김
-                if (egressInfo.hasFile()) {
-                    String s3Url = egressInfo.getFile().getLocation();
-                    log.info("Egress Ended Successfully: Room={}, URL={}", roomName, s3Url);
-                    mediaRecordCommandService.saveRecording(roomName, s3Url);
+        LivekitEgress.EgressInfo egressInfo = event.getEgressInfo();
+        String roomName = egressInfo.getRoomName();
+        String egressId = egressInfo.getEgressId();
+        LivekitEgress.EgressStatus status = egressInfo.getStatus();
+
+        // 2. 기본 정보 로그
+        log.info(">>> [Egress Info] ID: {}, Room: {}, Status: {}", egressId, roomName, status);
+
+        // 3. 상태 체크 (EGRESS_COMPLETE 여부)
+        if (status == LivekitEgress.EgressStatus.EGRESS_COMPLETE) {
+            log.info(">>> [Egress Success] Status confirmed as COMPLETE.");
+
+            // 4. 파일 정보 확인
+            if (egressInfo.hasFile()) {
+                LivekitEgress.FileInfo fileInfo = egressInfo.getFile();
+                String location = fileInfo.getLocation(); // S3 URL 또는 로컬 파일 경로
+                String filename = fileInfo.getFilename();
+
+                log.info(">>> [Egress File Found] Filename: {}, Location: {}", filename, location);
+
+                // Service 호출
+                try {
+                    mediaRecordCommandService.saveRecording(roomName, location);
+                    log.info(">>> [Logic Success] mediaRecordCommandService.saveRecording called successfully.");
+                } catch (Exception e) {
+                    log.error(">>> [Logic Error] Failed to save recording info to DB", e);
                 }
             } else {
-                log.warn("Egress Failed or Stopped: Status={}", egressInfo.getStatus());
+                // 파일 정보가 없는 경우 (스트림 전용이거나 오류 등)
+                log.warn(">>> [Egress Warning] Status is COMPLETE but 'hasFile()' is false. Check if outputType was 'file'.");
             }
+        } else {
+            // 실패하거나 중단된 경우
+            log.warn(">>> [Egress Failed/Stopped] Egress did not complete successfully. Status: {}, Error: {}", status, egressInfo.getError());
         }
     }
 }
