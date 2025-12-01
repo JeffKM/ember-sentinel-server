@@ -42,7 +42,10 @@ public class WebConfig implements WebMvcConfigurer {
                         "/error",
 
                         // --- RasberryPI ---
-                        "/embedded/**"
+                        "/embedded/**",
+
+                        // --- webhook ---
+                        "/livekit/webhook"
                 );
     }
 
