@@ -9,12 +9,15 @@ import livekit.LivekitEgress;
 import livekit.LivekitModels;
 import okhttp3.MediaType;
 import okhttp3.ResponseBody;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.test.util.ReflectionTestUtils;
 import retrofit2.Call;
 import retrofit2.Response;
 
@@ -46,11 +49,20 @@ class LiveKitManagementServiceTest {
     @Mock private Call<Void> voidCall;
 
     private final String ROOM_NAME = "fire_event_101";
+    private final String TEST_BUCKET = "test-bucket";
+    private final String TEST_REGION = "us-test-1";
+
+    @BeforeEach
+    void setUp() {
+        // @Value로 주입되는 private 필드에 테스트용 값을 Reflection으로 주입
+        ReflectionTestUtils.setField(liveKitManagementService, "s3BucketName", TEST_BUCKET);
+        ReflectionTestUtils.setField(liveKitManagementService, "awsRegion", TEST_REGION);
+    }
 
     // --- createRoomAndStartEgress Tests ---
 
     @Test
-    @DisplayName("성공: Room 생성과 Egress 시작 요청이 모두 성공해야 한다.")
+    @DisplayName("성공: Room 생성 후, S3 설정이 포함된 Egress 요청을 보내야 한다.")
     void createRoomAndStartEgress_Success() throws IOException {
         // Given
         // 1. Room 생성 Mock
@@ -60,10 +72,10 @@ class LiveKitManagementServiceTest {
         // 2. Egress 시작 Mock
         LivekitEgress.EgressInfo egressInfo = LivekitEgress.EgressInfo.newBuilder().setEgressId("egress_123").build();
 
-        // 모호성 해결을 위해 any(Class) 사용
+        // startRoomCompositeEgress 호출 시 인자 캡처를 위해 any() 사용
         when(egressServiceClient.startRoomCompositeEgress(
                 eq(ROOM_NAME),
-                any(LivekitEgress.EncodedFileOutput.class), // 타입 명시
+                any(LivekitEgress.EncodedFileOutput.class),
                 eq("single-speaker"))
         ).thenReturn(egressCall);
 
@@ -74,11 +86,25 @@ class LiveKitManagementServiceTest {
 
         // Then
         verify(roomServiceClient).createRoom(ROOM_NAME);
+
+        // [핵심] Egress 요청 시 전달된 EncodedFileOutput 객체를 캡처하여 검증
+        ArgumentCaptor<LivekitEgress.EncodedFileOutput> outputCaptor = ArgumentCaptor.forClass(LivekitEgress.EncodedFileOutput.class);
+
         verify(egressServiceClient).startRoomCompositeEgress(
                 eq(ROOM_NAME),
-                any(LivekitEgress.EncodedFileOutput.class),
+                outputCaptor.capture(), // 인자 가로채기
                 eq("single-speaker")
         );
+
+        LivekitEgress.EncodedFileOutput capturedOutput = outputCaptor.getValue();
+
+        // 1. 파일 경로 확인
+        assertThat(capturedOutput.getFilepath()).isEqualTo("recordings/" + ROOM_NAME + ".mp4");
+
+        // 2. S3 설정이 포함되었는지 확인
+        assertThat(capturedOutput.hasS3()).isTrue();
+        assertThat(capturedOutput.getS3().getBucket()).isEqualTo(TEST_BUCKET);
+        assertThat(capturedOutput.getS3().getRegion()).isEqualTo(TEST_REGION);
     }
 
     @Test
@@ -97,7 +123,7 @@ class LiveKitManagementServiceTest {
 
         assertThat(exception.getCode()).isEqualTo(ErrorCode.LIVEKIT_SERVER_ERROR);
 
-        // Egress 요청은 호출되지 않아야 함 (타입 명시하여 모호성 제거)
+        // Egress 요청은 호출되지 않아야 함
         verify(egressServiceClient, never()).startRoomCompositeEgress(
                 anyString(),
                 any(LivekitEgress.EncodedFileOutput.class),
