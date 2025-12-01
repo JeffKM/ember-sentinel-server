@@ -111,14 +111,18 @@ public class LiveKitWebhookEventSeperationService {
             // 4. 파일 정보 확인
             if (egressInfo.hasFile()) {
                 LivekitEgress.FileInfo fileInfo = egressInfo.getFile();
-                String location = fileInfo.getLocation(); // S3 URL 또는 로컬 파일 경로
-                String filename = fileInfo.getFilename();
 
-                log.info(">>> [Egress File Found] Filename: {}, Location: {}", filename, location);
+                // Filename(Object Key)을 사용함
+                String s3Key = fileInfo.getFilename();
+
+                // 로그 확인용 (location도 로그엔 남겨두면 좋음)
+                String location = fileInfo.getLocation();
+
+                log.info(">>> [Egress File Found] Filename: {}, Location: {}", s3Key, location);
 
                 // Service 호출
                 try {
-                    mediaRecordCommandService.saveRecording(roomName, location);
+                    mediaRecordCommandService.saveRecording(roomName, s3Key);
                     log.info(">>> [Logic Success] mediaRecordCommandService.saveRecording called successfully.");
                 } catch (Exception e) {
                     log.error(">>> [Logic Error] Failed to save recording info to DB", e);
