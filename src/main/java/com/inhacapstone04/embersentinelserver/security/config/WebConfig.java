@@ -36,6 +36,11 @@ public class WebConfig implements WebMvcConfigurer {
                         "/swagger-ui/**",
                         "/swagger-resources/**",
 
+                        // --- 로그 더럽히는 요청 제거 ---
+                        "/webjars/**",
+                        "/favicon.ico",
+                        "/error",
+
                         // --- RasberryPI ---
                         "/embedded/**"
                 );
