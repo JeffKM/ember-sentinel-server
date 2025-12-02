@@ -66,4 +66,38 @@ public class RoomCommandService {
         // 5. 응답 DTO 반환
         return SingleRoomResponse.of(savedRoom, building.getBuildingName());
     }
+
+    /**
+     * [DELETE] /room
+     * 요청자가 OWNER(또는 EDITOR) 권한을 가진 경우 해당 Room을 삭제합니다.
+     * * @param userId 삭제를 요청한 유저 ID
+     * @param roomId 삭제할 Room ID
+     */
+    public void deleteRoom(Long userId, Long roomId) {
+        // 1. [권한 검증] 요청자가 해당 Room의 EDITOR 권한 이상인지 확인
+        UserRoomMembership membership = membershipRepository
+                .findByUser_IdAndRoom_Id(userId, roomId)
+                .orElseThrow(() -> new CustomException(
+                        ErrorCode.NOT_AUTHORIZED_ACCESS_BY_ID,
+                        "Room ID " + roomId + "에 대한 멤버십이 없어 권한이 없습니다."
+                ));
+
+        // EDITOR 권한 이상이어야 삭제 가능
+        // (정책에 따라 OWNER만 삭제 가능하게 하려면 로직 수정 필요)
+        if (membership.getRole().ordinal() < MembershipRole.EDITOR.ordinal()) {
+            throw new CustomException(
+                    ErrorCode.NOT_AUTHORIZED_ACCESS_BY_ID,
+                    "방을 삭제하려면 최소 EDITOR 권한이 필요합니다."
+            );
+        }
+
+        // 2. [Room 조회]
+        Room room = roomRepository.findById(roomId)
+                .orElseThrow(() -> new CustomException(ErrorCode.NOT_FOUND_BY_ID));
+
+        // 3. [삭제]
+        // Room 엔티티에 CascadeType.ALL이 설정되어 있다면 연관된 멤버십, 카메라 등도 함께 삭제됩니다.
+        // 설정이 없다면 여기서 연관 데이터를 먼저 삭제해야 할 수 있습니다.
+        roomRepository.delete(room);
+    }
 }

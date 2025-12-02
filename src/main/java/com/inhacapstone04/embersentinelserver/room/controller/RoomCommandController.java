@@ -8,10 +8,7 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequiredArgsConstructor
@@ -36,5 +33,23 @@ public class RoomCommandController {
 
         SingleRoomResponse response = roomCommandService.createRoom(userId, request);
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
+    }
+
+    /**
+     * [DELETE] /room/{roomId}
+     * roomId에 해당하는 방을 삭제합니다.
+     * 요청자가 해당 방의 EDITOR 권한 이상인지 서비스에서 검증합니다.
+     *
+     * @param userId 요청한 유저 ID (JWT 추출)
+     * @param roomId 삭제할 방 ID
+     * @return 204 No Content
+     */
+    @DeleteMapping("/{roomId}")
+    public ResponseEntity<Void> deleteRoom(
+            @AuthorizedUser Long userId,
+            @PathVariable Long roomId
+    ) {
+        roomCommandService.deleteRoom(userId, roomId);
+        return ResponseEntity.noContent().build();
     }
 }
