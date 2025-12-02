@@ -45,7 +45,10 @@ public class WebConfig implements WebMvcConfigurer {
                         "/embedded/**",
 
                         // --- webhook ---
-                        "/livekit/webhook"
+                        "/livekit/webhook",
+
+                        // --- media streaming test ---
+                        "/media/test/**"
                 );
     }
 
