@@ -3,6 +3,7 @@ package com.inhacapstone04.embersentinelserver.media.service;
 import com.inhacapstone04.embersentinelserver.common.service.LiveKitManagementService;
 import com.inhacapstone04.embersentinelserver.common.util.LiveKitUtil;
 import com.inhacapstone04.embersentinelserver.fire_event.dto.response.FireEventStreamInfoResponse;
+import com.inhacapstone04.embersentinelserver.fire_event.dto.response.FireEventWatchResponse;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -49,7 +50,34 @@ public class MediaStreamTestService {
     }
 
     /**
-     * [추가됨] 테스트용 스트리밍 종료 API
+     * 테스트용 시청자(Subscriber) 토큰 발급 API
+     * 특정 roomName에 대해 시청 권한만 있는 토큰을 발급합니다.
+     *
+     * @param roomName 접속할 방 이름
+     * @return FireEventWatchResponse (토큰 정보)
+     */
+    public FireEventWatchResponse testSubscribe(String roomName) {
+        Long tempViewerId = System.currentTimeMillis();
+        String identity = "test_viewer_" + tempViewerId;
+
+        // 테스트용 메타데이터 주입
+        String metadata = "{\"type\":\"TEST_SUBSCRIBER\", \"userId\":" + tempViewerId + "}";
+
+        String token = liveKitUtil.createToken(
+                roomName,
+                identity,           // Identity
+                "Test Viewer",      // Name
+                metadata,
+                false, // canPublish: FALSE (시청자는 송출 불가)
+                true   // canSubscribe: TRUE (시청 가능)
+        );
+
+        // DB가 없으므로 fireEventId는 임시값(현재시간 등)을 반환
+        return FireEventWatchResponse.of(token, roomName, tempViewerId);
+    }
+
+    /**
+     * 테스트용 스트리밍 종료 API
      * 방을 삭제하면 Egress도 자동으로 종료되고 S3 업로드가 시작됩니다.
      *
      * @param roomName 삭제할 LiveKit 방 이름

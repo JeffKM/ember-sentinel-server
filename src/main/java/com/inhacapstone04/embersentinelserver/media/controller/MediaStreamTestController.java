@@ -1,6 +1,7 @@
 package com.inhacapstone04.embersentinelserver.media.controller;
 
 import com.inhacapstone04.embersentinelserver.fire_event.dto.response.FireEventStreamInfoResponse;
+import com.inhacapstone04.embersentinelserver.fire_event.dto.response.FireEventWatchResponse;
 import com.inhacapstone04.embersentinelserver.media.service.MediaStreamTestService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -20,6 +21,17 @@ public class MediaStreamTestController {
     @PostMapping("/stream")
     public ResponseEntity<FireEventStreamInfoResponse> startTestStream() {
         FireEventStreamInfoResponse response = mediaStreamTestService.testStartStreaming();
+        return ResponseEntity.ok(response);
+    }
+
+    /**
+     * [추가됨] 테스트용 시청자(Subscriber) 토큰 발급 API
+     * 특정 roomName에 대해 시청 권한만 있는 토큰을 발급합니다.
+     * API: GET /media/test/stream/{roomName}/subscribe
+     */
+    @GetMapping("/stream/{roomName}/subscribe")
+    public ResponseEntity<FireEventWatchResponse> getTestSubscribeToken(@PathVariable String roomName) {
+        FireEventWatchResponse response = mediaStreamTestService.testSubscribe(roomName);
         return ResponseEntity.ok(response);
     }
 
