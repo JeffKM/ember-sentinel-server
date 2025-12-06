@@ -10,6 +10,7 @@ import com.inhacapstone04.embersentinelserver.common.response.PageResponse;
 import com.inhacapstone04.embersentinelserver.fire_event.dto.FireEventSimpleDTO;
 import com.inhacapstone04.embersentinelserver.fire_event.dto.response.FireEventDetailResponse;
 import com.inhacapstone04.embersentinelserver.fire_event.dto.response.FireEventWatchResponse;
+import com.inhacapstone04.embersentinelserver.fire_event.entity.DetectionType;
 import com.inhacapstone04.embersentinelserver.fire_event.entity.FireCause;
 import com.inhacapstone04.embersentinelserver.fire_event.entity.FireEvent;
 import com.inhacapstone04.embersentinelserver.fire_event.repository.FireEventRepository;
@@ -235,7 +236,8 @@ class FireEventQueryServiceTest {
         assertThat(response).isNotNull();
         assertThat(response.livekitRoomName()).isEqualTo("stream-key-a"); // setUp에서 설정한 streamKey
         assertThat(response.subscriberToken()).isNotNull().isNotEmpty();
-        // 토큰 내용은 LiveKit 서버 로직이라 상세 검증은 어렵지만 발급 여부 확인
+        // [수정됨] DTO에 추가된 fireEventId 검증
+        assertThat(response.fireEventId()).isEqualTo(eventId);
     }
 
     @Test
@@ -346,6 +348,7 @@ class FireEventQueryServiceTest {
     private FireEvent createFireEvent(CameraEdge camera) {
         FireEvent event = new FireEvent();
         event.setCameraEdge(camera);
+        event.setDetectionType(DetectionType.FIRE);
         event.setFireCause(FireCause.기타);
         event.setRiskRank(1L);
         return fireEventRepository.save(event);

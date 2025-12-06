@@ -6,6 +6,7 @@ import com.inhacapstone04.embersentinelserver.camera_edge.entity.CameraEdge;
 import com.inhacapstone04.embersentinelserver.camera_edge.repository.CameraEdgeRepository;
 import com.inhacapstone04.embersentinelserver.common.exception.CustomException;
 import com.inhacapstone04.embersentinelserver.common.exception.ErrorCode;
+import com.inhacapstone04.embersentinelserver.fire_event.entity.DetectionType;
 import com.inhacapstone04.embersentinelserver.fire_event.entity.FireCause;
 import com.inhacapstone04.embersentinelserver.fire_event.entity.FireEvent;
 import com.inhacapstone04.embersentinelserver.fire_event.repository.FireEventRepository;
@@ -27,7 +28,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 @SpringBootTest
-@Transactional // 테스트 후 롤백
+@Transactional
 @DisplayName("MediaRecordCommandService 통합 테스트")
 class MediaRecordCommandServiceTest {
 
@@ -63,6 +64,7 @@ class MediaRecordCommandServiceTest {
 
         FireEvent fireEvent = new FireEvent();
         fireEvent.setCameraEdge(camera);
+        fireEvent.setDetectionType(DetectionType.FIRE);
         fireEvent.setFireCause(FireCause.기타);
         fireEvent.setRiskRank(0L);
         savedFireEvent = fireEventRepository.save(fireEvent);

@@ -8,6 +8,7 @@ import com.inhacapstone04.embersentinelserver.camera_edge.repository.CameraEdgeR
 import com.inhacapstone04.embersentinelserver.common.exception.CustomException;
 import com.inhacapstone04.embersentinelserver.common.exception.ErrorCode;
 import com.inhacapstone04.embersentinelserver.common.response.PageResponse;
+import com.inhacapstone04.embersentinelserver.fire_event.entity.DetectionType;
 import com.inhacapstone04.embersentinelserver.fire_event.entity.FireEvent;
 import com.inhacapstone04.embersentinelserver.room.dto.response.RoomDetailResponse;
 import com.inhacapstone04.embersentinelserver.room.entity.MembershipRole;
@@ -42,7 +43,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 @SpringBootTest
-@Transactional // 테스트 후 DB 롤백
+@Transactional
 @DisplayName("RoomQueryService 통합 테스트")
 class RoomQueryServiceTest {
 
@@ -64,15 +65,6 @@ class RoomQueryServiceTest {
     private CameraEdge camA1, camA2, camB1;
     private FireEvent eventA_Live;
 
-    /**
-     * 테스트 데이터 세팅:
-     * - User1: roomA (EDITOR), roomB (EDITOR)
-     * - User2: roomC (EDITOR)
-     *
-     * - roomA: 카메라 2대 (camA1, camA2), LIVE 이벤트 1개 (camA1), ENDED 이벤트 1개 (camA2)
-     * - roomB: 카메라 1대 (camB1), LIVE 이벤트 0개
-     * - roomC: (User2의 방)
-     */
     @BeforeEach
     void setUp() {
         // 1. 유저 생성
@@ -210,22 +202,24 @@ class RoomQueryServiceTest {
         assertThat(response.cameras()).hasSize(2);
 
         // camA1 (LIVE 이벤트 존재) -> isFireOccurring = true
-        // [수정] CameraEdgeWithIsFireDTO 타입 사용
         CameraEdgeWithIsFireDTO camA1_dto = findCamera(response, camA1.getId());
         assertThat(camA1_dto.cameraEdgeAlias()).isEqualTo(camA1.getCameraEdgeAlias());
         assertThat(camA1_dto.isFireOccurring()).isTrue(); // LIVE 상태이므로
         assertThat(camA1_dto.fireEventId()).isEqualTo(eventA_Live.getId()); // LIVE 이벤트 ID
 
-        // [추가됨] 새로 추가된 필드 검증 (Floor, RoomNumber)
+        // DTO 변경사항 반영 (locationFloor, roomNumber)
         assertThat(camA1_dto.locationFloor()).isEqualTo(roomA.getBuildingLocationFloor());
         assertThat(camA1_dto.roomNumber()).isEqualTo(roomA.getRoomNumber());
 
         // camA2 (ENDED 이벤트 존재 -> 쿼리 결과 false) -> isFireOccurring = false
-        // [수정] CameraEdgeWithIsFireDTO 타입 사용
         CameraEdgeWithIsFireDTO camA2_dto = findCamera(response, camA2.getId());
         assertThat(camA2_dto.cameraEdgeAlias()).isEqualTo(camA2.getCameraEdgeAlias());
         assertThat(camA2_dto.isFireOccurring()).isFalse(); // LIVE가 아니므로
         assertThat(camA2_dto.fireEventId()).isNull(); // LIVE가 아니므로 (생성자 로직에 의해 null)
+
+        // [추가 검증]
+        assertThat(camA2_dto.locationFloor()).isEqualTo(roomA.getBuildingLocationFloor());
+        assertThat(camA2_dto.roomNumber()).isEqualTo(roomA.getRoomNumber());
     }
 
     @Test
@@ -250,8 +244,6 @@ class RoomQueryServiceTest {
 
         // when & then
         // (Auth 로직이 먼저 동작하므로 ROOM_NOT_FOUND가 아닌 FORBIDDEN이 발생)
-        // *참고: 서비스 로직 순서(Auth vs Find)에 따라 기대하는 에러 코드가 다를 수 있음.
-        // 이전에 수정한 로직에 맞춰 NOT_FOUND로 설정.
         assertThatThrownBy(() -> roomQueryService.getRoomDetail(userId, nonExistentRoomId))
                 .isInstanceOf(CustomException.class)
                 .hasFieldOrPropertyWithValue("code", ErrorCode.NOT_FOUND_BY_ID);
@@ -287,7 +279,7 @@ class RoomQueryServiceTest {
 
     private void createMembership(User user, Room room, MembershipRole role) {
         UserRoomMembership membership = new UserRoomMembership(user, room);
-        membership.setRole(role); // [수정됨] 널 제약조건 해결
+        membership.setRole(role); // 널 제약조건 해결
         room.getUserMemberships().add(membership); // <-- 이 줄을 추가하세요.
 
         membershipRepository.save(membership);
@@ -304,6 +296,7 @@ class RoomQueryServiceTest {
     private FireEvent createFireEvent(CameraEdge camera) {
         FireEvent event = new FireEvent();
         event.setCameraEdge(camera);
+        event.setDetectionType(DetectionType.FIRE);
         return fireEventRepository.save(event);
     }
 
@@ -322,7 +315,7 @@ class RoomQueryServiceTest {
                 .orElseThrow(() -> new AssertionError("통계 응답에 roomId " + roomId + "가 없습니다."));
     }
 
-    // [신규 헬퍼] 상세 조회 응답에서 특정 카메라 찾기 - 반환 타입 수정
+    // [헬퍼] 상세 조회 응답에서 특정 카메라 찾기 - 반환 타입 수정
     private CameraEdgeWithIsFireDTO findCamera(RoomDetailResponse response, Long cameraId) {
         return response.cameras().stream()
                 .filter(c -> c.cameraId().equals(cameraId))
