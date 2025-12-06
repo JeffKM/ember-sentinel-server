@@ -15,7 +15,6 @@ import java.util.List;
 public class FcmService {
 
     private final UserRoomMembershipRepository membershipRepository;
-    // 단위 테스트의 효율성을 FirebaseMessaging.getInstance()를 의존성 주입으로 리팩토링
     private final FirebaseMessaging firebaseMessaging;
 
     /**
@@ -31,8 +30,12 @@ public class FcmService {
             // 1. 해당 방 멤버들의 FCM 토큰 조회
             List<String> tokens = membershipRepository.findAllFcmTokensByRoomId(roomId);
 
-            if (tokens.isEmpty()) {
-                log.info("No FCM tokens found for Room ID: {}", roomId);
+            List<String> validTokens = tokens.stream()
+                    .filter(token -> token != null && !token.trim().isEmpty())
+                    .toList();
+
+            if (validTokens.isEmpty()) {
+                log.info("No valid FCM tokens found for Room ID: {}", roomId);
                 return;
             }
 
@@ -49,7 +52,7 @@ public class FcmService {
                     .putData("type", "FIRE_ALERT")
                     .putData("roomId", String.valueOf(roomId))
                     .putData("fireEventId", String.valueOf(fireEventId))
-                    .addAllTokens(tokens)
+                    .addAllTokens(validTokens)
                     .build();
 
             // 4. 발송

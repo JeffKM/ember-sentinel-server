@@ -13,6 +13,8 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -38,7 +40,7 @@ class FcmServiceTest {
         Long roomId = 1L;
         String roomAlias = "305호 연구실";
         Long eventId = 100L;
-        String fireDetectionType = "화재"; // [추가] 감지 유형
+        String fireDetectionType = "화재";
         String cameraAlias = "천장 카메라";
 
         // 가짜 토큰 리스트 반환
@@ -51,7 +53,7 @@ class FcmServiceTest {
         when(firebaseMessaging.sendEachForMulticast(any(MulticastMessage.class))).thenReturn(mockResponse);
 
         // When
-        // [수정] 변경된 메서드 시그니처 호출
+        // [수정] 변경된 메서드 시그니처 호출 (Detection Type 포함)
         fcmService.sendFireAlert(roomId, roomAlias, eventId, fireDetectionType, cameraAlias);
 
         // Then
@@ -64,25 +66,47 @@ class FcmServiceTest {
 
         MulticastMessage capturedMessage = messageCaptor.getValue();
 
-        // 3. 캡처한 메시지 내용 검증
+        // 3. 캡처한 메시지 객체 확인
         assertThat(capturedMessage).isNotNull();
-        // 실제 Notification 객체의 내용을 검증하는 것은 Firebase SDK의 구조상 어렵지만,
-        // 호출이 정상적으로 이루어졌다는 것만으로도 로직 검증은 충분합니다.
     }
 
     @Test
-    @DisplayName("토큰이 없는 경우: Firebase 발송을 시도하지 않아야 한다.")
-    void sendFireAlert_NoTokens() throws Exception {
+    @DisplayName("토큰 필터링: null이나 빈 문자열 토큰이 섞여 있어도 유효한 토큰이 있으면 발송해야 한다.")
+    void sendFireAlert_FilterInvalidTokens() throws Exception {
         // Given
         Long roomId = 1L;
-        when(membershipRepository.findAllFcmTokensByRoomId(roomId)).thenReturn(List.of());
+        // 유효한 토큰 1개, 무효한 토큰 3개 (null, 빈 문자열, 공백)
+        List<String> mixedTokens = Arrays.asList("valid_token", null, "", "   ");
+        when(membershipRepository.findAllFcmTokensByRoomId(roomId)).thenReturn(mixedTokens);
+
+        BatchResponse mockResponse = mock(BatchResponse.class);
+        when(firebaseMessaging.sendEachForMulticast(any(MulticastMessage.class))).thenReturn(mockResponse);
 
         // When
-        // [수정] 변경된 메서드 시그니처 호출
+        fcmService.sendFireAlert(roomId, "Test Room", 100L, "연기", "Cam 1");
+
+        // Then
+        // 유효한 토큰("valid_token")이 하나라도 있으므로 sendEachForMulticast가 1회 호출되어야 함
+        verify(firebaseMessaging, times(1)).sendEachForMulticast(any(MulticastMessage.class));
+    }
+
+    @Test
+    @DisplayName("토큰이 없거나 모두 무효한 경우: Firebase 발송을 시도하지 않아야 한다.")
+    void sendFireAlert_NoValidTokens() throws Exception {
+        // Given
+        Long roomId = 1L;
+
+        // 1. 빈 리스트인 경우
+        when(membershipRepository.findAllFcmTokensByRoomId(roomId)).thenReturn(Collections.emptyList());
+        fcmService.sendFireAlert(roomId, "Test Room", 100L, "화재", "Cam 1");
+
+        // 2. null 또는 공백 토큰만 있는 경우
+        when(membershipRepository.findAllFcmTokensByRoomId(roomId)).thenReturn(Arrays.asList(null, "", "  "));
         fcmService.sendFireAlert(roomId, "Test Room", 100L, "화재", "Cam 1");
 
         // Then
-        // 토큰이 없으면 sendEachForMulticast가 호출되지 않아야 함
+        // 두 경우 모두 유효한 토큰이 없으므로 발송 메서드가 호출되지 않아야 함
         verify(firebaseMessaging, never()).sendEachForMulticast(any());
     }
 }
+

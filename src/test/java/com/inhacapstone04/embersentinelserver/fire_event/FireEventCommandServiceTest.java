@@ -128,13 +128,17 @@ class FireEventCommandServiceTest {
         FireEventStartRequest request = new FireEventStartRequest(DEVICE_UUID, DETECTION_TYPE);
 
         // 카메라 조회 성공
-        // [수정됨] Room Mock은 필요하지만, Camera 메서드 호출(Stub)은 제거해야 함
-        // (예외 발생 전까지 getRoom() 등이 호출되지 않기 때문)
+        // [수정됨] 불필요한 스텁 제거: 예외 발생 전까지 camera.getId(), camera.getRoom()은 호출되지 않음
         CameraEdge camera = mock(CameraEdge.class);
+        // Room room = mock(Room.class); // 불필요
+        // when(camera.getId()).thenReturn(CAMERA_ID); // 불필요
+        // when(camera.getRoom()).thenReturn(room); // 불필요
 
         when(cameraEdgeRepository.findByDeviceUuid(DEVICE_UUID)).thenReturn(Optional.of(camera));
 
         // DB 저장 성공
+        // [수정됨] 불필요한 스텁 제거: save()의 결과값인 FireEvent 객체의 ID는 LiveKit 호출 전인
+        // "3. LiveKit Room Name 생성" 단계에서 사용되므로, save()에 대한 스텁은 필요함.
         when(fireEventRepository.save(any(FireEvent.class))).thenAnswer(invocation -> {
             FireEvent e = invocation.getArgument(0);
             ReflectionTestUtils.setField(e, "id", FIRE_EVENT_ID);
@@ -152,7 +156,7 @@ class FireEventCommandServiceTest {
 
         assertThat(exception.getCode()).isEqualTo(ErrorCode.LIVEKIT_SERVER_ERROR);
 
-        // FCM 알림 발송 검증 (절대 호출되지 않아야 함)
+        // FCM 알림은 발송되지 않아야 함
         verify(fcmService, never()).sendFireAlert(anyLong(), anyString(), anyLong(), anyString(), anyString());
     }
 }
