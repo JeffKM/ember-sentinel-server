@@ -5,6 +5,7 @@ import com.inhacapstone04.embersentinelserver.security.interceptor.AuthIntercept
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.web.method.support.HandlerMethodArgumentResolver;
+import org.springframework.web.servlet.config.annotation.CorsRegistry;
 import org.springframework.web.servlet.config.annotation.InterceptorRegistry;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 
@@ -16,6 +17,20 @@ public class WebConfig implements WebMvcConfigurer {
 
     private final AuthInterceptor authInterceptor;
     private final AuthorizedUserArgumentResolver authorizedUserArgumentResolver;
+
+    /**
+     * CORS 설정
+     * http://127.0.0.1:5500 (VSCode Live Server) 등 프론트엔드에서의 접근 허용
+     */
+    @Override
+    public void addCorsMappings(CorsRegistry registry) {
+        registry.addMapping("/**")
+                .allowedOriginPatterns("*") // 모든 Origin 허용 (http://127.0.0.1:5500 포함)
+                .allowedMethods("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS")
+                .allowedHeaders("*")
+                .allowCredentials(true) // 쿠키, 인증 헤더 포함 허용
+                .maxAge(3600);
+    }
 
     /**
      * AuthInterceptor를 스프링에 등록합니다.
