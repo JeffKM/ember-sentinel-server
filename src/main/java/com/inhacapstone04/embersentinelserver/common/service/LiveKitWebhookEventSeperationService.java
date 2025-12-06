@@ -59,6 +59,15 @@ public class LiveKitWebhookEventSeperationService {
 
     private void handleParticipantJoined(LivekitWebhook.WebhookEvent event) {
         if (event.hasParticipant()) {
+            // 참여자 식별자(Identity) 확인
+            String identity = event.getParticipant().getIdentity();
+
+            // Egress 봇(녹화기)인지 확인하고 로그만 출력 후 종료
+            if (identity != null && identity.startsWith("EG_")) {
+                log.info(">>> [Participant Joined] Egress Bot (Recorder) entered. Identity: {} (Skipping logic)", identity);
+                return;
+            }
+
             String metadata = event.getParticipant().getMetadata();
             log.info("Participant Joined Metadata: {}", metadata);
 
