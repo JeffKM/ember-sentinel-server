@@ -74,7 +74,7 @@ public class FireEventCommandService {
                 "cam_" + camera.getId(),
                 camera.getCameraEdgeAlias(),
                 metadata,
-                true, false
+                true, true
         );
 
         // 7. FCM 알림 발송 (비동기)

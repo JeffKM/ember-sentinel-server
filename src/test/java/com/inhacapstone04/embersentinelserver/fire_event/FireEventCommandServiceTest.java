@@ -53,6 +53,8 @@ class FireEventCommandServiceTest {
     private final String ROOM_ALIAS = "Test Room";
     private final String CAMERA_ALIAS = "Test Camera";
     private final String TOKEN = "jwt_token_example";
+
+    // [수정] 감지 유형 상수 추가
     private final DetectionType DETECTION_TYPE = DetectionType.FIRE;
 
     @Test
@@ -64,7 +66,7 @@ class FireEventCommandServiceTest {
         // 1. Mock Camera & Room
         Room room = mock(Room.class);
         when(room.getId()).thenReturn(ROOM_ID);
-        when(room.getRoomAlias()).thenReturn(ROOM_ALIAS);
+        when(room.getRoomAlias()).thenReturn(ROOM_ALIAS); // FcmService에서 사용
 
         CameraEdge camera = mock(CameraEdge.class);
         when(camera.getId()).thenReturn(CAMERA_ID);
@@ -73,7 +75,7 @@ class FireEventCommandServiceTest {
 
         when(cameraEdgeRepository.findByDeviceUuid(DEVICE_UUID)).thenReturn(Optional.of(camera));
 
-        // 2. Mock Repository Save
+        // 2. Mock Repository Save (ID 할당 시뮬레이션)
         when(fireEventRepository.save(any(FireEvent.class))).thenAnswer(invocation -> {
             FireEvent event = invocation.getArgument(0);
             ReflectionTestUtils.setField(event, "id", FIRE_EVENT_ID);
@@ -81,24 +83,36 @@ class FireEventCommandServiceTest {
         });
 
         // 3. Mock Token Generation
-        when(liveKitUtil.createToken(anyString(), anyString(), anyString(), anyString(), eq(true), eq(false)))
+        // [수정됨] 실제 서비스 코드에서 canSubscribe를 true로 변경했으므로, 스텁 설정도 eq(true)로 일치시켜야 함
+        when(liveKitUtil.createToken(anyString(), anyString(), anyString(), anyString(), eq(true), eq(true)))
                 .thenReturn(TOKEN);
 
         // When
         FireEventStreamInfoResponse response = fireEventCommandService.startFireEvent(request);
 
         // Then
+        // 1. 응답 데이터 검증
         assertThat(response).isNotNull();
         assertThat(response.fireEventId()).isEqualTo(FIRE_EVENT_ID);
+        assertThat(response.livekitRoomName()).isEqualTo("fire_event_" + FIRE_EVENT_ID);
+        assertThat(response.token()).isEqualTo(TOKEN);
 
+        // 2. 로직 호출 순서 및 인자 검증
+
+        // - DB 저장 호출 확인
         verify(fireEventRepository).save(any(FireEvent.class));
         verify(mediaStreamRepository).save(any(MediaStream.class));
+
+        // - LiveKit 인프라 제어 위임 확인
         verify(liveKitManagementService).createRoomAndStartEgress("fire_event_" + FIRE_EVENT_ID);
+
+        // - [수정] FCM 알림 발송 서비스 호출 확인 (변경된 시그니처 반영)
+        // sendFireAlert(roomId, roomAlias, fireEventId, fireDetectionType, cameraAlias)
         verify(fcmService).sendFireAlert(
                 eq(ROOM_ID),
                 eq(ROOM_ALIAS),
                 eq(FIRE_EVENT_ID),
-                eq(DETECTION_TYPE.getDescription()),
+                eq(DETECTION_TYPE.getDescription()), // "화재" 또는 "연기"
                 eq(CAMERA_ALIAS)
         );
     }
@@ -117,6 +131,7 @@ class FireEventCommandServiceTest {
 
         assertThat(exception.getCode()).isEqualTo(ErrorCode.NOT_FOUND_BY_ID);
 
+        // 이후 로직은 실행되지 않아야 함
         verify(fireEventRepository, never()).save(any());
         verify(liveKitManagementService, never()).createRoomAndStartEgress(anyString());
     }
@@ -127,18 +142,14 @@ class FireEventCommandServiceTest {
         // Given
         FireEventStartRequest request = new FireEventStartRequest(DEVICE_UUID, DETECTION_TYPE);
 
-        // 카메라 조회 성공
-        // [수정됨] 불필요한 스텁 제거: 예외 발생 전까지 camera.getId(), camera.getRoom()은 호출되지 않음
+        // [수정] 불필요한 스텁 제거 (UnnecessaryStubbingException 방지)
+        // 이 테스트는 LiveKit 호출 시점에서 실패하므로, 그 이후에 호출되는 camera.getId()나 room 관련 메서드는 실행되지 않습니다.
+        // 따라서 when(camera.getId())... 등의 코드는 제거해야 합니다.
         CameraEdge camera = mock(CameraEdge.class);
-        // Room room = mock(Room.class); // 불필요
-        // when(camera.getId()).thenReturn(CAMERA_ID); // 불필요
-        // when(camera.getRoom()).thenReturn(room); // 불필요
 
         when(cameraEdgeRepository.findByDeviceUuid(DEVICE_UUID)).thenReturn(Optional.of(camera));
 
-        // DB 저장 성공
-        // [수정됨] 불필요한 스텁 제거: save()의 결과값인 FireEvent 객체의 ID는 LiveKit 호출 전인
-        // "3. LiveKit Room Name 생성" 단계에서 사용되므로, save()에 대한 스텁은 필요함.
+        // DB 저장 성공 (ID 주입 - LiveKit 방 이름 생성에 필요하므로 유지)
         when(fireEventRepository.save(any(FireEvent.class))).thenAnswer(invocation -> {
             FireEvent e = invocation.getArgument(0);
             ReflectionTestUtils.setField(e, "id", FIRE_EVENT_ID);
@@ -156,7 +167,7 @@ class FireEventCommandServiceTest {
 
         assertThat(exception.getCode()).isEqualTo(ErrorCode.LIVEKIT_SERVER_ERROR);
 
-        // FCM 알림은 발송되지 않아야 함
+        // FCM 알림은 발송되지 않아야 함 (순서상 LiveKit 설정 후 발송되므로)
         verify(fcmService, never()).sendFireAlert(anyLong(), anyString(), anyLong(), anyString(), anyString());
     }
 }
