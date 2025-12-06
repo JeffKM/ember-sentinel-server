@@ -82,6 +82,7 @@ public class FireEventCommandService {
                 camera.getRoom().getId(),
                 camera.getRoom().getRoomAlias(),
                 fireEvent.getId(),
+                fireEvent.getDetectionType().getDescription(),
                 camera.getCameraEdgeAlias()
         );
 

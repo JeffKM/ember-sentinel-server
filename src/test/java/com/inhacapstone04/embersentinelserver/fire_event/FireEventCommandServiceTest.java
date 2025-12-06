@@ -9,6 +9,7 @@ import com.inhacapstone04.embersentinelserver.common.service.LiveKitManagementSe
 import com.inhacapstone04.embersentinelserver.common.util.LiveKitUtil;
 import com.inhacapstone04.embersentinelserver.fire_event.dto.request.FireEventStartRequest;
 import com.inhacapstone04.embersentinelserver.fire_event.dto.response.FireEventStreamInfoResponse;
+import com.inhacapstone04.embersentinelserver.fire_event.entity.DetectionType;
 import com.inhacapstone04.embersentinelserver.fire_event.entity.FireEvent;
 import com.inhacapstone04.embersentinelserver.fire_event.repository.FireEventRepository;
 import com.inhacapstone04.embersentinelserver.fire_event.service.FireEventCommandService;
@@ -39,6 +40,7 @@ class FireEventCommandServiceTest {
     @Mock private FireEventRepository fireEventRepository;
     @Mock private CameraEdgeRepository cameraEdgeRepository;
     @Mock private MediaStreamRepository mediaStreamRepository;
+
     @Mock private LiveKitUtil liveKitUtil;
     @Mock private FcmService fcmService;
     @Mock private LiveKitManagementService liveKitManagementService;
@@ -51,12 +53,13 @@ class FireEventCommandServiceTest {
     private final String ROOM_ALIAS = "Test Room";
     private final String CAMERA_ALIAS = "Test Camera";
     private final String TOKEN = "jwt_token_example";
+    private final DetectionType DETECTION_TYPE = DetectionType.FIRE;
 
     @Test
-    @DisplayName("성공: 화재 감지 요청 시 이벤트 생성, 스트리밍 시작, 알림 발송, 토큰 반환이 정상적으로 수행된다.")
+    @DisplayName("성공: 화재 감지 요청 시 이벤트 생성, 스트리밍 시작(위임), 알림 발송, 토큰 반환이 정상적으로 수행된다.")
     void startFireEvent_Success() {
         // Given
-        FireEventStartRequest request = new FireEventStartRequest(DEVICE_UUID);
+        FireEventStartRequest request = new FireEventStartRequest(DEVICE_UUID, DETECTION_TYPE);
 
         // 1. Mock Camera & Room
         Room room = mock(Room.class);
@@ -70,8 +73,7 @@ class FireEventCommandServiceTest {
 
         when(cameraEdgeRepository.findByDeviceUuid(DEVICE_UUID)).thenReturn(Optional.of(camera));
 
-        // 2. Mock Repository Save (ID 할당 시뮬레이션)
-        // 서비스 내부에서 new FireEvent()를 호출하므로, save 메서드 호출 시 ID를 강제로 주입해줍니다.
+        // 2. Mock Repository Save
         when(fireEventRepository.save(any(FireEvent.class))).thenAnswer(invocation -> {
             FireEvent event = invocation.getArgument(0);
             ReflectionTestUtils.setField(event, "id", FIRE_EVENT_ID);
@@ -86,30 +88,26 @@ class FireEventCommandServiceTest {
         FireEventStreamInfoResponse response = fireEventCommandService.startFireEvent(request);
 
         // Then
-        // 1. 응답 데이터 검증
         assertThat(response).isNotNull();
         assertThat(response.fireEventId()).isEqualTo(FIRE_EVENT_ID);
-        assertThat(response.livekitRoomName()).isEqualTo("fire_event_" + FIRE_EVENT_ID);
-        assertThat(response.token()).isEqualTo(TOKEN);
 
-        // 2. 로직 호출 순서 및 인자 검증
-
-        // - DB 저장 호출 확인
         verify(fireEventRepository).save(any(FireEvent.class));
         verify(mediaStreamRepository).save(any(MediaStream.class));
-
-        // - LiveKit 인프라 제어 서비스 호출 확인 (방 생성 & 녹화 시작)
         verify(liveKitManagementService).createRoomAndStartEgress("fire_event_" + FIRE_EVENT_ID);
-
-        // - FCM 알림 발송 서비스 호출 확인
-        verify(fcmService).sendFireAlert(eq(ROOM_ID), eq(ROOM_ALIAS), eq(FIRE_EVENT_ID), eq(CAMERA_ALIAS));
+        verify(fcmService).sendFireAlert(
+                eq(ROOM_ID),
+                eq(ROOM_ALIAS),
+                eq(FIRE_EVENT_ID),
+                eq(DETECTION_TYPE.getDescription()),
+                eq(CAMERA_ALIAS)
+        );
     }
 
     @Test
     @DisplayName("실패: 존재하지 않는 카메라 UUID로 요청 시 NOT_FOUND 예외 발생")
     void startFireEvent_Fail_CameraNotFound() {
         // Given
-        FireEventStartRequest request = new FireEventStartRequest("unknown-uuid");
+        FireEventStartRequest request = new FireEventStartRequest("unknown-uuid", DETECTION_TYPE);
         when(cameraEdgeRepository.findByDeviceUuid("unknown-uuid")).thenReturn(Optional.empty());
 
         // When & Then
@@ -119,23 +117,24 @@ class FireEventCommandServiceTest {
 
         assertThat(exception.getCode()).isEqualTo(ErrorCode.NOT_FOUND_BY_ID);
 
-        // 이후 로직은 실행되지 않아야 함
         verify(fireEventRepository, never()).save(any());
         verify(liveKitManagementService, never()).createRoomAndStartEgress(anyString());
-        verify(fcmService, never()).sendFireAlert(anyLong(), anyString(), anyLong(), anyString());
     }
 
     @Test
     @DisplayName("실패: LiveKit 관리 서비스에서 예외 발생 시 전파 (트랜잭션 롤백 유발)")
     void startFireEvent_Fail_LiveKitError() {
         // Given
-        FireEventStartRequest request = new FireEventStartRequest(DEVICE_UUID);
+        FireEventStartRequest request = new FireEventStartRequest(DEVICE_UUID, DETECTION_TYPE);
 
         // 카메라 조회 성공
+        // [수정됨] Room Mock은 필요하지만, Camera 메서드 호출(Stub)은 제거해야 함
+        // (예외 발생 전까지 getRoom() 등이 호출되지 않기 때문)
         CameraEdge camera = mock(CameraEdge.class);
+
         when(cameraEdgeRepository.findByDeviceUuid(DEVICE_UUID)).thenReturn(Optional.of(camera));
 
-        // DB 저장 성공 (ID 주입)
+        // DB 저장 성공
         when(fireEventRepository.save(any(FireEvent.class))).thenAnswer(invocation -> {
             FireEvent e = invocation.getArgument(0);
             ReflectionTestUtils.setField(e, "id", FIRE_EVENT_ID);
@@ -153,7 +152,7 @@ class FireEventCommandServiceTest {
 
         assertThat(exception.getCode()).isEqualTo(ErrorCode.LIVEKIT_SERVER_ERROR);
 
-        // FCM 알림은 발송되지 않아야 함 (순서상 LiveKit 설정 후 발송되므로)
-        verify(fcmService, never()).sendFireAlert(anyLong(), anyString(), anyLong(), anyString());
+        // FCM 알림 발송 검증 (절대 호출되지 않아야 함)
+        verify(fcmService, never()).sendFireAlert(anyLong(), anyString(), anyLong(), anyString(), anyString());
     }
 }

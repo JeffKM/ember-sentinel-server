@@ -26,7 +26,7 @@ public class FcmService {
      * @param cameraAlias 감지한 카메라 이름
      */
     @Async
-    public void sendFireAlert(Long roomId, String roomAlias, Long fireEventId, String cameraAlias) {
+    public void sendFireAlert(Long roomId, String roomAlias, Long fireEventId, String fireDetectionType, String cameraAlias) {
         try {
             // 1. 해당 방 멤버들의 FCM 토큰 조회
             List<String> tokens = membershipRepository.findAllFcmTokensByRoomId(roomId);
@@ -39,7 +39,7 @@ public class FcmService {
             // 2. 알림 메시지 구성
             // roomAlias가 제목에 포함되는지 확인 필요
             Notification notification = Notification.builder()
-                    .setTitle("[Ember Sentinel]🔥 " + roomAlias + "에서 화재 감지 알림")
+                    .setTitle("[Ember Sentinel]🔥 " + roomAlias + "에서 " + fireDetectionType + " 감지 알림")
                     .setBody(String.format("[%s] 카메라에서 화재가 감지되었습니다! 탭하여 확인하세요.", cameraAlias))
                     .build();
 

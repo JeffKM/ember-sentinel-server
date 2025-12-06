@@ -9,6 +9,7 @@ import java.time.OffsetDateTime;
 
 public record FireEventDetailResponse(
         Long id,
+        String detectinoType,
         String fireCause,
         Long riskRank,
         OffsetDateTime createdAt,
@@ -19,6 +20,7 @@ public record FireEventDetailResponse(
     public static FireEventDetailResponse of(FireEvent event, CameraEdgeDTO cameraInfo, MediaStreamDTO streamInfo, MediaRecordDTO recordInfo) {
         return new FireEventDetailResponse(
                 event.getId(),
+                event.getDetectionType().name(),
                 event.getFireCause() != null ? event.getFireCause().name() : "UNKNOWN",
                 event.getRiskRank(),
                 event.getCreatedAt(),

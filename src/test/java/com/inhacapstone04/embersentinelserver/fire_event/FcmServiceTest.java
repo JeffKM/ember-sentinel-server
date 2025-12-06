@@ -32,12 +32,13 @@ class FcmServiceTest {
     private FirebaseMessaging firebaseMessaging;
 
     @Test
-    @DisplayName("화재 알림 발송 성공: 메시지 제목에 RoomAlias가 포함되어야 한다.")
+    @DisplayName("화재 알림 발송 성공: 메시지 제목에 RoomAlias와 감지 유형이 포함되어야 한다.")
     void sendFireAlert_Success() throws Exception {
         // Given
         Long roomId = 1L;
         String roomAlias = "305호 연구실";
         Long eventId = 100L;
+        String fireDetectionType = "화재"; // [추가] 감지 유형
         String cameraAlias = "천장 카메라";
 
         // 가짜 토큰 리스트 반환
@@ -50,7 +51,8 @@ class FcmServiceTest {
         when(firebaseMessaging.sendEachForMulticast(any(MulticastMessage.class))).thenReturn(mockResponse);
 
         // When
-        fcmService.sendFireAlert(roomId, roomAlias, eventId, cameraAlias);
+        // [수정] 변경된 메서드 시그니처 호출
+        fcmService.sendFireAlert(roomId, roomAlias, eventId, fireDetectionType, cameraAlias);
 
         // Then
         // 1. Repository가 호출되었는지 확인
@@ -63,9 +65,9 @@ class FcmServiceTest {
         MulticastMessage capturedMessage = messageCaptor.getValue();
 
         // 3. 캡처한 메시지 내용 검증
-        // (Notification 객체 검증은 필드 접근 제한으로 인해 직접적으로 어렵지만,
-        // 위 verify 호출만으로 로직이 수행되었음을 보장합니다.)
         assertThat(capturedMessage).isNotNull();
+        // 실제 Notification 객체의 내용을 검증하는 것은 Firebase SDK의 구조상 어렵지만,
+        // 호출이 정상적으로 이루어졌다는 것만으로도 로직 검증은 충분합니다.
     }
 
     @Test
@@ -76,7 +78,8 @@ class FcmServiceTest {
         when(membershipRepository.findAllFcmTokensByRoomId(roomId)).thenReturn(List.of());
 
         // When
-        fcmService.sendFireAlert(roomId, "Test Room", 100L, "Cam 1");
+        // [수정] 변경된 메서드 시그니처 호출
+        fcmService.sendFireAlert(roomId, "Test Room", 100L, "화재", "Cam 1");
 
         // Then
         // 토큰이 없으면 sendEachForMulticast가 호출되지 않아야 함
