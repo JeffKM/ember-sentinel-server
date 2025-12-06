@@ -19,6 +19,10 @@ public class FireEvent extends CreatedAtEntity {
     private Long id;
 
     @Enumerated(EnumType.STRING)
+    @Column(name = "detection_type", nullable = false) // [추가됨] 감지 유형 (FIRE/SMOKE)
+    private DetectionType detectionType;
+
+    @Enumerated(EnumType.STRING)
     @Column(name = "fire_cause", nullable = true)
     private FireCause fireCause;
 

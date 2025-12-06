@@ -46,8 +46,9 @@ public class FireEventCommandService {
         // 2. FireEvent 생성 및 저장
         FireEvent fireEvent = new FireEvent();
         fireEvent.setCameraEdge(camera);
-        fireEvent.setFireCause(FireCause.기타);
-        fireEvent.setRiskRank(0L);
+        fireEvent.setDetectionType(request.detectionType());
+        fireEvent.setFireCause(FireCause.기타); // 현재 모델에 포함되지 않은 기능, 추후 개발을 위해 미리 개발
+        fireEvent.setRiskRank(0L);             // 현재 모델에 포함되지 않은 기능, 추후 개발을 위해 미리 개발
         fireEventRepository.save(fireEvent);
 
         // 3. LiveKit Room Name 생성
