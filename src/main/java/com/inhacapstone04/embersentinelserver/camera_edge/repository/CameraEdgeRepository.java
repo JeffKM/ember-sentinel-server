@@ -12,4 +12,6 @@ public interface CameraEdgeRepository extends JpaRepository<CameraEdge,Long> {
     boolean existsByDeviceUuid(String deviceUuid);
 
     Optional<CameraEdge> findByDeviceUuid(@NotBlank String deviceUuid);
+
+    Optional<CameraEdge> findByApiKey(String apiKey);
 }

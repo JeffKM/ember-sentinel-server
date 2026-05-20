@@ -14,6 +14,8 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.UUID;
+
 @Service
 @RequiredArgsConstructor
 public class CameraEdgeCommandService {
@@ -53,11 +55,13 @@ public class CameraEdgeCommandService {
             );
         }
 
-        // 4. [카메라 생성 및 저장]
+        // 4. [카메라 생성 및 저장] — API Key 자동 생성
+        String apiKey = UUID.randomUUID().toString();
         CameraEdge newCamera = new CameraEdge(
                 room,
                 request.deviceUuid(),
-                request.cameraEdgeAlias()
+                request.cameraEdgeAlias(),
+                apiKey
         );
 
         // 5. DTO 반환

@@ -2,6 +2,7 @@ package com.inhacapstone04.embersentinelserver.user.controller;
 
 import com.inhacapstone04.embersentinelserver.user.dto.request.EmailLoginRequest;
 import com.inhacapstone04.embersentinelserver.user.dto.request.OAuthLoginRequest;
+import com.inhacapstone04.embersentinelserver.user.dto.request.TokenRefreshRequest;
 import com.inhacapstone04.embersentinelserver.user.dto.response.AuthInfoResponse;
 import com.inhacapstone04.embersentinelserver.user.entity.AuthType;
 import com.inhacapstone04.embersentinelserver.user.service.AuthService;
@@ -48,13 +49,13 @@ public class AuthController {
 
     /**
      * Refresh Token을 사용하여 Access Token과 Refresh Token을 재발급합니다.
-     * 클라이언트로부터 Refresh Token을 본문으로 받습니다.
+     * 이전 Refresh Token은 블랙리스트에 등록되어 재사용이 감지됩니다.
      */
     @PostMapping("/token/refresh")
     public ResponseEntity<AuthInfoResponse> refresh(
-            @RequestBody String refreshToken
+            @Valid @RequestBody TokenRefreshRequest request
     ) {
-        AuthInfoResponse response = authService.reissueToken(refreshToken);
+        AuthInfoResponse response = authService.reissueToken(request.refreshToken());
         return ResponseEntity.ok(response);
     }
 }

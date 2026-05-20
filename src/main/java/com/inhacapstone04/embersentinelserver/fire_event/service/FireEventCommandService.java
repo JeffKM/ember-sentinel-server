@@ -35,13 +35,21 @@ public class FireEventCommandService {
 
     /**
      * 화재 감지 시 이벤트를 생성하고 스트리밍 환경을 구축합니다. (Publisher용)
+     *
+     * @param request 화재 이벤트 시작 요청
+     * @param deviceCameraEdgeId DeviceAuthInterceptor에서 인증된 카메라 ID
      */
     @Transactional
-    public FireEventStreamInfoResponse startFireEvent(FireEventStartRequest request) {
+    public FireEventStreamInfoResponse startFireEvent(FireEventStartRequest request, Long deviceCameraEdgeId) {
 
         // 1. CameraEdge 조회
         CameraEdge camera = cameraEdgeRepository.findByDeviceUuid(request.deviceUuid())
                 .orElseThrow(() -> new CustomException(ErrorCode.NOT_FOUND_BY_ID, "해당 UUID의 카메라를 찾을 수 없습니다."));
+
+        // 1-1. API Key로 인증된 디바이스와 요청 body의 deviceUuid가 일치하는지 검증
+        if (!camera.getId().equals(deviceCameraEdgeId)) {
+            throw new CustomException(ErrorCode.INVALID_DEVICE_API_KEY, "API Key와 deviceUuid가 일치하지 않습니다.");
+        }
 
         // 2. FireEvent 생성 및 저장
         FireEvent fireEvent = new FireEvent();

@@ -38,7 +38,16 @@ public enum ErrorCode {
     CANNOT_REMOVE_SELF(HttpStatus.BAD_REQUEST, "자신에 대한 정보를 스스로 삭제할 수 없습니다."),
     LIVEKIT_SERVER_ERROR(HttpStatus.INTERNAL_SERVER_ERROR, "LiveKit 서버와 통신 중 오류가 발생했습니다."),
     DUPLICATE_DEVICE_UUID(HttpStatus.CONFLICT, "이미 존재하는 device UUID입니다."),
-    NOT_FOUND_FCM_TOKEN(HttpStatus.NOT_FOUND, "해당 사용자에게 등록된 FCM 토큰이 존재하지 않습니다.");
+    NOT_FOUND_FCM_TOKEN(HttpStatus.NOT_FOUND, "해당 사용자에게 등록된 FCM 토큰이 존재하지 않습니다."),
+
+    // 디바이스 인증
+    INVALID_DEVICE_API_KEY(HttpStatus.UNAUTHORIZED, "유효하지 않은 디바이스 API Key입니다."),
+
+    // Rate Limiting
+    RATE_LIMIT_EXCEEDED(HttpStatus.TOO_MANY_REQUESTS, "요청 빈도 제한을 초과했습니다. 잠시 후 다시 시도해주세요."),
+
+    // Refresh Token 재사용 탐지
+    REFRESH_TOKEN_REUSED(HttpStatus.UNAUTHORIZED, "Refresh Token 재사용이 감지되었습니다. 보안을 위해 재로그인이 필요합니다.");
 
     private final HttpStatus httpStatus;
     private final String message;

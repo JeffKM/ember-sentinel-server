@@ -2,6 +2,7 @@ package com.inhacapstone04.embersentinelserver.security.config;
 
 import com.inhacapstone04.embersentinelserver.common.resolver.AuthorizedUserArgumentResolver;
 import com.inhacapstone04.embersentinelserver.security.interceptor.AuthInterceptor;
+import com.inhacapstone04.embersentinelserver.security.interceptor.DeviceAuthInterceptor;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.web.method.support.HandlerMethodArgumentResolver;
@@ -16,6 +17,7 @@ import java.util.List;
 public class WebConfig implements WebMvcConfigurer {
 
     private final AuthInterceptor authInterceptor;
+    private final DeviceAuthInterceptor deviceAuthInterceptor;
     private final AuthorizedUserArgumentResolver authorizedUserArgumentResolver;
 
     /**
@@ -33,13 +35,16 @@ public class WebConfig implements WebMvcConfigurer {
     }
 
     /**
-     * AuthInterceptor를 스프링에 등록합니다.
+     * 인터셉터를 스프링에 등록합니다.
+     * - AuthInterceptor: JWT 기반 사용자 인증 (모든 경로, 일부 제외)
+     * - DeviceAuthInterceptor: API Key 기반 디바이스 인증 (/embedded/** 전용)
      */
     @Override
     public void addInterceptors(InterceptorRegistry registry) {
+        // 1. JWT 사용자 인증 인터셉터
         registry.addInterceptor(authInterceptor)
-                .addPathPatterns("/**") // (1) 모든 요청에 대해 인터셉터 실행
-                .excludePathPatterns( // (2) 단, 여기 명시된 경로는 인터셉터 실행 제외 (인증X)
+                .addPathPatterns("/**")
+                .excludePathPatterns(
                         // --- auth(login) 관련
                         "/auth/**",
 
@@ -56,7 +61,7 @@ public class WebConfig implements WebMvcConfigurer {
                         "/favicon.ico",
                         "/error",
 
-                        // --- RasberryPI ---
+                        // --- 엣지 디바이스 (DeviceAuthInterceptor가 별도 처리) ---
                         "/embedded/**",
 
                         // --- webhook ---
@@ -65,6 +70,10 @@ public class WebConfig implements WebMvcConfigurer {
                         // --- media streaming test ---
                         "/media/test/**"
                 );
+
+        // 2. 디바이스 API Key 인증 인터셉터 (/embedded/** 전용)
+        registry.addInterceptor(deviceAuthInterceptor)
+                .addPathPatterns("/embedded/**");
     }
 
     /**

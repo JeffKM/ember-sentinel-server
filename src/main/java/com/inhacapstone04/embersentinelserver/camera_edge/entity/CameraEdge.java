@@ -27,6 +27,9 @@ public class CameraEdge extends BaseEntity {
     @Column(name = "camera_edge_alias")
     private String cameraEdgeAlias;
 
+    @Column(name = "api_key", unique = true)
+    private String apiKey;
+
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "room_id", nullable = false)
     private Room room;
@@ -34,10 +37,11 @@ public class CameraEdge extends BaseEntity {
     @OneToMany(mappedBy = "cameraEdge", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<FireEvent> fireEvents = new ArrayList<>();
 
-    public CameraEdge(Room room, String deviceUuid, String cameraEdgeAlias) {
+    public CameraEdge(Room room, String deviceUuid, String cameraEdgeAlias, String apiKey) {
         this.room = room;
         this.deviceUuid = deviceUuid;
         this.cameraEdgeAlias = cameraEdgeAlias;
+        this.apiKey = apiKey;
     }
 
     public CameraEdge() {}

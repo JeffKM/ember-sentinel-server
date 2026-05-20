@@ -14,11 +14,17 @@ import com.inhacapstone04.embersentinelserver.user.entity.oauth.OAuth2UserInfo;
 import com.inhacapstone04.embersentinelserver.user.service.oauth.OAuth2ClientService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.time.Duration;
+import java.util.HexFormat;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class AuthService {
@@ -71,37 +77,60 @@ public class AuthService {
 
     /**
      * Refresh Token을 사용하여 Access Token과 Refresh Token을 재발급합니다.
+     * 이전 토큰은 블랙리스트에 등록되며, 재사용 감지 시 해당 사용자의 모든 토큰을 무효화합니다.
      */
     public AuthInfoResponse reissueToken(String refreshToken) {
 
         // 1. Refresh Token 유효성 검사 (만료 여부 포함)
-        // Refresh Token이 만료된 경우 CustomException(REFRESH_TOKEN_EXPIRED)를 던짐
         jwtUtil.validateRefreshToken(refreshToken);
 
-        // 2. Refresh Token에서 userId 추출
+        // 2. 블랙리스트 확인 — 재사용 감지
+        String tokenHash = hashToken(refreshToken);
+        if (redisService.hasKey("BL:" + tokenHash)) {
+            // 토큰 재사용 감지: 도용 가능성 → 해당 사용자의 모든 토큰 무효화
+            Long userId = jwtUtil.getUserIdFromToken(refreshToken);
+            redisService.deleteValues("RT:" + userId);
+            log.warn("Refresh Token 재사용 감지 - userId: {}, 모든 토큰 무효화 처리", userId);
+            throw new CustomException(ErrorCode.REFRESH_TOKEN_REUSED);
+        }
+
+        // 3. Refresh Token에서 userId 추출
         Long userId = jwtUtil.getUserIdFromToken(refreshToken);
 
-        // 3. 해당 userId로 저장된 Refresh Token이 클라이언트가 보낸 토큰과 일치하는지 확인해야 합니다.
-        //    불일치 시 throw new CustomException(ErrorCode.INVALID_TOKEN);
+        // 4. Redis에 저장된 Refresh Token과 비교
         String storedToken = redisService.getValues("RT:" + userId);
         if (!refreshToken.equals(storedToken)) {
             throw new CustomException(ErrorCode.INVALID_TOKEN, "Token mismatch. Possible theft attempt.");
         }
 
-        // 4. 새 Access Token 발급
+        // 5. 새 Access Token 발급
         String newAccessToken = jwtUtil.generateAccessToken(userId);
 
-        // 5. 새 Refresh Token 발급 (Rotation)
+        // 6. 새 Refresh Token 발급 (Rotation)
         String newRefreshToken = jwtUtil.generateRefreshToken(userId);
 
-        // 6. 새로 발급된 Refresh Token을 DB/Redis에 저장(업데이트)해야 합니다.
+        // 7. 새로 발급된 Refresh Token을 Redis에 저장
         redisService.setValues("RT:" + userId, newRefreshToken, Duration.ofMillis(refreshTokenExpirationTime));
 
-        // 7. 응답 DTO 생성
-        Long expiresInSeconds = accessTokenExpirationMs / 1000;
+        // 8. 이전 Refresh Token을 블랙리스트에 등록 (TTL = 원래 만료 시간)
+        redisService.setValues("BL:" + tokenHash, userId.toString(), Duration.ofMillis(refreshTokenExpirationTime));
 
-        // 재발급이므로 isNewUser는 false
+        // 9. 응답 DTO 생성
+        Long expiresInSeconds = accessTokenExpirationMs / 1000;
         return AuthInfoResponse.of(newAccessToken, newRefreshToken, expiresInSeconds, false);
+    }
+
+    /**
+     * 토큰을 SHA-256으로 해시합니다 (블랙리스트 키 생성용).
+     */
+    private String hashToken(String token) {
+        try {
+            MessageDigest digest = MessageDigest.getInstance("SHA-256");
+            byte[] hash = digest.digest(token.getBytes(StandardCharsets.UTF_8));
+            return HexFormat.of().formatHex(hash);
+        } catch (NoSuchAlgorithmException e) {
+            throw new RuntimeException("SHA-256 알고리즘을 사용할 수 없습니다.", e);
+        }
     }
 
     public AuthInfoResponse loginByEmail(AuthType authType, @Valid EmailLoginRequest request) {

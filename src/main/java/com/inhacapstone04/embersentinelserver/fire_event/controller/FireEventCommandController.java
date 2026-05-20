@@ -3,6 +3,7 @@ package com.inhacapstone04.embersentinelserver.fire_event.controller;
 import com.inhacapstone04.embersentinelserver.fire_event.dto.request.FireEventStartRequest;
 import com.inhacapstone04.embersentinelserver.fire_event.dto.response.FireEventStreamInfoResponse;
 import com.inhacapstone04.embersentinelserver.fire_event.service.FireEventCommandService;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -18,14 +19,17 @@ public class FireEventCommandController {
     private final FireEventCommandService fireEventCommandService;
 
     /**
-     * 1. 화재 감지 및 스트리밍 시작 요청 (라즈베리파이 호출)
+     * 화재 감지 및 스트리밍 시작 요청 (라즈베리파이 호출)
      * API: POST /embedded/fire-event/publish
+     * 인증: DeviceAuthInterceptor에 의해 X-Device-API-Key 검증 완료
      */
     @PostMapping("/embedded/fire-event/publish")
     public ResponseEntity<FireEventStreamInfoResponse> startFireEvent(
-            @Valid @RequestBody FireEventStartRequest request
+            @Valid @RequestBody FireEventStartRequest request,
+            HttpServletRequest httpRequest
     ) {
-        FireEventStreamInfoResponse response = fireEventCommandService.startFireEvent(request);
+        Long deviceCameraEdgeId = (Long) httpRequest.getAttribute("deviceCameraEdgeId");
+        FireEventStreamInfoResponse response = fireEventCommandService.startFireEvent(request, deviceCameraEdgeId);
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 }

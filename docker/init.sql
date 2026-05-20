@@ -52,6 +52,7 @@ CREATE TABLE IF NOT EXISTS camera_edge (
     id                  BIGSERIAL PRIMARY KEY,
     device_uuid         VARCHAR(255),
     camera_edge_alias   VARCHAR(255),
+    api_key             VARCHAR(255) UNIQUE,
     room_id             BIGINT NOT NULL REFERENCES room(id),
     created_at          TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
     modified_at         TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()
@@ -116,16 +117,16 @@ INSERT INTO user_room_membership (user_id, room_id, role) VALUES
     (2, 3, 'VIEWER'),
     (2, 5, 'VIEWER');
 
--- 카메라 8개
-INSERT INTO camera_edge (device_uuid, camera_edge_alias, room_id) VALUES
-    ('cam-uuid-001', '서버실 입구 카메라',      1),
-    ('cam-uuid-002', '서버실 랙 카메라',        1),
-    ('cam-uuid-003', '전산실 메인 카메라',      2),
-    ('cam-uuid-004', 'AI 연구실 카메라 A',      3),
-    ('cam-uuid-005', 'AI 연구실 카메라 B',      3),
-    ('cam-uuid-006', 'IoT 실험실 카메라',       4),
-    ('cam-uuid-007', '네트워크 랩 입구 카메라', 5),
-    ('cam-uuid-008', '네트워크 랩 내부 카메라', 5);
+-- 카메라 8개 (api_key 포함)
+INSERT INTO camera_edge (device_uuid, camera_edge_alias, api_key, room_id) VALUES
+    ('cam-uuid-001', '서버실 입구 카메라',      'dev-api-key-001', 1),
+    ('cam-uuid-002', '서버실 랙 카메라',        'dev-api-key-002', 1),
+    ('cam-uuid-003', '전산실 메인 카메라',      'dev-api-key-003', 2),
+    ('cam-uuid-004', 'AI 연구실 카메라 A',      'dev-api-key-004', 3),
+    ('cam-uuid-005', 'AI 연구실 카메라 B',      'dev-api-key-005', 3),
+    ('cam-uuid-006', 'IoT 실험실 카메라',       'dev-api-key-006', 4),
+    ('cam-uuid-007', '네트워크 랩 입구 카메라', 'dev-api-key-007', 5),
+    ('cam-uuid-008', '네트워크 랩 내부 카메라', 'dev-api-key-008', 5);
 
 -- 화재 이벤트 샘플 3개 (과거 이벤트)
 INSERT INTO fire_event (detection_type, fire_cause, risk_rank, camera_edge_id, created_at) VALUES
