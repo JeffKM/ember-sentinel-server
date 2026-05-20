@@ -1,0 +1,138 @@
+# Ember Sentinel Server — 로컬 개발 환경
+# 사용법: docker compose up -d
+# 전체 재빌드: docker compose up -d --build
+
+services:
+  # ──────────────────────────────────────────────
+  # PostgreSQL 15
+  # ──────────────────────────────────────────────
+  postgres:
+    image: postgres:15-alpine
+    container_name: ember-postgres
+    environment:
+      POSTGRES_DB: ember_sentinel
+      POSTGRES_USER: ember
+      POSTGRES_PASSWORD: ember_local_password
+    ports:
+      - "5432:5432"
+    volumes:
+      - ./docker/init.sql:/docker-entrypoint-initdb.d/01-init.sql
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ember -d ember_sentinel"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # ──────────────────────────────────────────────
+  # Redis 7
+  # ──────────────────────────────────────────────
+  redis:
+    image: redis:7-alpine
+    container_name: ember-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # ──────────────────────────────────────────────
+  # LiveKit SFU 서버
+  # ──────────────────────────────────────────────
+  livekit:
+    image: livekit/livekit-server:latest
+    container_name: ember-livekit
+    ports:
+      - "7880:7880"   # HTTP API + WebSocket
+      - "7881:7881"   # TCP (ICE/TURN)
+      - "50000-50020:50000-50020/udp"  # WebRTC UDP
+    volumes:
+      - ./docker/livekit-local.yaml:/etc/livekit.yaml
+    command: --config /etc/livekit.yaml --dev
+    depends_on:
+      redis:
+        condition: service_healthy
+
+  # ──────────────────────────────────────────────
+  # LiveKit Egress (녹화 서비스)
+  # ──────────────────────────────────────────────
+  livekit-egress:
+    image: livekit/egress:latest
+    container_name: ember-livekit-egress
+    environment:
+      EGRESS_CONFIG_FILE: /etc/egress.yaml
+    volumes:
+      - ./docker/egress-local.yaml:/etc/egress.yaml
+    depends_on:
+      - livekit
+      - minio
+
+  # ──────────────────────────────────────────────
+  # MinIO (S3 호환 오브젝트 스토리지)
+  # ──────────────────────────────────────────────
+  minio:
+    image: minio/minio:latest
+    container_name: ember-minio
+    ports:
+      - "9000:9000"   # S3 API
+      - "9001:9001"   # 관리 콘솔
+    environment:
+      MINIO_ROOT_USER: minioadmin
+      MINIO_ROOT_PASSWORD: minioadmin123
+    command: server /data --console-address ":9001"
+    volumes:
+      - minio_data:/data
+    healthcheck:
+      test: ["CMD", "mc", "ready", "local"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # ──────────────────────────────────────────────
+  # MinIO 버킷 초기화 (T-005)
+  # ──────────────────────────────────────────────
+  minio-init:
+    image: minio/mc:latest
+    container_name: ember-minio-init
+    depends_on:
+      minio:
+        condition: service_healthy
+    entrypoint: >
+      /bin/sh -c "
+      mc alias set local http://minio:9000 minioadmin minioadmin123;
+      mc mb local/ember-sentinel-recordings --ignore-existing;
+      mc anonymous set download local/ember-sentinel-recordings;
+      echo '=== MinIO 버킷 초기화 완료: ember-sentinel-recordings ===';
+      "
+    restart: "no"
+
+  # ──────────────────────────────────────────────
+  # API 서버 (Spring Boot)
+  # ──────────────────────────────────────────────
+  api-server:
+    build:
+      context: .
+      dockerfile: Dockerfile.local
+    container_name: ember-api-server
+    ports:
+      - "8080:8080"
+    environment:
+      SPRING_PROFILES_ACTIVE: local
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      livekit:
+        condition: service_started
+      minio-init:
+        condition: service_completed_successfully
+
+volumes:
+  postgres_data:
+  redis_data:
+  minio_data:

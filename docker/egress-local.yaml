@@ -1,0 +1,21 @@
+# =====================================================
+# LiveKit Egress — 로컬 개발 환경 설정
+# 녹화된 영상을 MinIO(S3 호환)에 저장
+# =====================================================
+
+# LiveKit 서버 연결 정보
+api_key: devkey
+api_secret: secret
+ws_url: ws://livekit:7880
+
+# 로깅
+log_level: info
+
+# S3 호환 스토리지 (MinIO)
+s3:
+  access_key: minioadmin
+  secret: minioadmin123
+  region: us-east-1
+  endpoint: http://minio:9000
+  bucket: ember-sentinel-recordings
+  force_path_style: true

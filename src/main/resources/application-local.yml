@@ -1,0 +1,72 @@
+# ===================================================
+# Ember Sentinel Server — 로컬 개발 환경 프로필
+# 활성화: SPRING_PROFILES_ACTIVE=local
+# Docker Compose 환경에서 사용
+# ===================================================
+
+spring:
+  # PostgreSQL
+  datasource:
+    url: jdbc:postgresql://postgres:5432/ember_sentinel
+    username: ember
+    password: ember_local_password
+    driver-class-name: org.postgresql.Driver
+
+  # JPA — 로컬에서는 ddl-auto: validate (init.sql로 스키마 생성)
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: true
+    properties:
+      hibernate:
+        format_sql: true
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+
+  # Redis
+  data:
+    redis:
+      host: redis
+      port: 6379
+
+# JWT
+jwt:
+  secret-key: ember-sentinel-local-dev-jwt-secret-key-minimum-256-bits-long-enough
+  access-token-expiration-ms: 3600000     # 1시간
+  refresh-token-expiration-ms: 604800000  # 7일
+
+# LiveKit
+livekit:
+  api:
+    key: devkey
+    secret: secret
+    url: http://livekit:7880
+
+# AWS S3 → MinIO
+aws:
+  region: us-east-1
+  s3:
+    bucket: ember-sentinel-recordings
+    endpoint: http://minio:9000
+    access-key: minioadmin
+    secret-key: minioadmin123
+    path-style-access: true
+
+# LiveKitManagementService에서 참조하는 프로퍼티 (MinIO 호환)
+cloud:
+  aws:
+    s3:
+      bucket: ember-sentinel-recordings
+    region:
+      static: us-east-1
+
+# FCM 비활성화 (로컬 환경에서는 Firebase 키 불필요)
+fcm:
+  enabled: false
+  key-path: ""
+
+# 로깅
+logging:
+  level:
+    root: INFO
+    com.inhacapstone04: DEBUG
+    org.hibernate.SQL: DEBUG

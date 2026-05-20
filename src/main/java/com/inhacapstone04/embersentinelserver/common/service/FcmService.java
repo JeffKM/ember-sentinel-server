@@ -26,6 +26,10 @@ public class FcmService {
      */
     @Async
     public void sendFireAlert(Long roomId, String roomAlias, Long fireEventId, String fireDetectionType, String cameraAlias) {
+        if (firebaseMessaging == null) {
+            log.info("[로컬] FCM 비활성화 — 화재 알림 전송 생략 (Room: {}, Event: {})", roomId, fireEventId);
+            return;
+        }
         try {
             // 1. 해당 방 멤버들의 FCM 토큰 조회
             List<String> tokens = membershipRepository.findAllFcmTokensByRoomId(roomId);
@@ -72,6 +76,10 @@ public class FcmService {
      */
     @Async
     public void sendSimpleAlertByFcm(String token, String alertBody) {
+        if (firebaseMessaging == null) {
+            log.info("[로컬] FCM 비활성화 — 알림 전송 생략 (token: {})", token);
+            return;
+        }
         try {
             // 1. 알림 구성 (제목은 기본값으로 설정, 필요시 파라미터로 분리 가능)
             Notification notification = Notification.builder()

@@ -1,0 +1,34 @@
+# =====================================================
+# LiveKit SFU 서버 — 로컬 개발 환경 설정
+# =====================================================
+
+port: 7880
+
+rtc:
+  tcp_port: 7881
+  port_range_start: 50000
+  port_range_end: 50020
+  use_external_ip: false
+
+# API 인증 키 (application-local.yml의 livekit.api.key/secret과 일치해야 함)
+keys:
+  devkey: secret
+
+# 로깅
+logging:
+  json: false
+  level: info
+
+# Webhook — API 서버로 이벤트 전송
+webhook:
+  urls:
+    - http://api-server:8080/livekit/webhook
+  api_key: devkey
+
+# Redis (LiveKit 내부 상태 관리)
+redis:
+  address: redis:6379
+
+# TURN 서버 (로컬 환경에서는 비활성화)
+turn:
+  enabled: false
