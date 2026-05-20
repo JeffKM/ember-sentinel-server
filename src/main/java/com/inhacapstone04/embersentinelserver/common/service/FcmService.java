@@ -4,18 +4,25 @@ import com.google.firebase.messaging.*;
 import com.inhacapstone04.embersentinelserver.room.repository.UserRoomMembershipRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
 
 @Service
-@RequiredArgsConstructor
 @Slf4j
 public class FcmService {
 
     private final UserRoomMembershipRepository membershipRepository;
     private final FirebaseMessaging firebaseMessaging;
+
+    @Autowired
+    public FcmService(UserRoomMembershipRepository membershipRepository,
+                      @Autowired(required = false) FirebaseMessaging firebaseMessaging) {
+        this.membershipRepository = membershipRepository;
+        this.firebaseMessaging = firebaseMessaging;
+    }
 
     /**
      * 화재 발생 알림을 해당 방의 모든 멤버에게 전송합니다. (비동기 처리)
