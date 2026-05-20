@@ -103,7 +103,11 @@ public class UserRoomMembershipCommandService {
                         "Room ID " + roomId + "에서 User ID " + userIdForDeletion + "에 해당하는 멤버십을 찾을 수 없어 삭제할 수 없습니다."
                 ));
 
-        // 4. 삭제 실행
+        // 4. 양방향 관계 정리 후 삭제 실행
+        Room room = membershipToDelete.getRoom();
+        if (room != null) {
+            room.getUserMemberships().remove(membershipToDelete);
+        }
         membershipRepository.delete(membershipToDelete);
     }
 

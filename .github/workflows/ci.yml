@@ -33,10 +33,20 @@ jobs:
         run: chmod +x ./gradlew
 
       - name: Build with Gradle Wrapper
-        run: ./gradlew build
+        run: ./gradlew build jacocoTestReport
+
+      - name: Verify Code Coverage (minimum 70%)
+        run: ./gradlew jacocoTestCoverageVerification
 
       - name: Publish Test Report
         uses: mikepenz/action-junit-report@v5
         if: success() || failure()
         with:
           report_paths: '**/build/test-results/test/TEST-*.xml'
+
+      - name: Upload JaCoCo Coverage Report
+        uses: actions/upload-artifact@v4
+        if: success() || failure()
+        with:
+          name: jacoco-coverage-report
+          path: build/reports/jacoco/test/html/

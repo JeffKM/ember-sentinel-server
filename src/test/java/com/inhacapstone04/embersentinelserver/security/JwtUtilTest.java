@@ -3,13 +3,13 @@ package com.inhacapstone04.embersentinelserver.security;
 import com.inhacapstone04.embersentinelserver.common.exception.CustomException;
 import com.inhacapstone04.embersentinelserver.common.exception.ErrorCode;
 import com.inhacapstone04.embersentinelserver.common.util.JwtUtil;
+import com.inhacapstone04.embersentinelserver.support.IntegrationTestSupport;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.security.Keys;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.SpringBootTest;
 
 import java.nio.charset.StandardCharsets;
 import java.security.Key;
@@ -17,9 +17,8 @@ import java.util.Date;
 
 import static org.assertj.core.api.Assertions.*;
 
-@SpringBootTest // Spring 컨텍스트를 로드하여 @Value 속성 주입
 @DisplayName("JwtUtil 테스트")
-class JwtUtilTest {
+class JwtUtilTest extends IntegrationTestSupport {
 
     @Autowired
     private JwtUtil jwtUtil;

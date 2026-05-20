@@ -1,25 +1,20 @@
 package com.inhacapstone04.embersentinelserver.media;
 
 import com.inhacapstone04.embersentinelserver.building.entity.Building;
-import com.inhacapstone04.embersentinelserver.building.repository.BuildingRepository;
 import com.inhacapstone04.embersentinelserver.camera_edge.entity.CameraEdge;
-import com.inhacapstone04.embersentinelserver.camera_edge.repository.CameraEdgeRepository;
 import com.inhacapstone04.embersentinelserver.common.exception.CustomException;
 import com.inhacapstone04.embersentinelserver.common.exception.ErrorCode;
-import com.inhacapstone04.embersentinelserver.fire_event.entity.DetectionType;
 import com.inhacapstone04.embersentinelserver.fire_event.entity.FireCause;
 import com.inhacapstone04.embersentinelserver.fire_event.entity.FireEvent;
-import com.inhacapstone04.embersentinelserver.fire_event.repository.FireEventRepository;
 import com.inhacapstone04.embersentinelserver.media.entity.MediaRecord;
 import com.inhacapstone04.embersentinelserver.media.repository.MediaRecordRepository;
 import com.inhacapstone04.embersentinelserver.media.service.MediaRecordCommandService;
 import com.inhacapstone04.embersentinelserver.room.entity.Room;
-import com.inhacapstone04.embersentinelserver.room.repository.RoomRepository;
+import com.inhacapstone04.embersentinelserver.support.IntegrationTestSupport;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
@@ -27,44 +22,25 @@ import java.util.List;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-@SpringBootTest
 @Transactional
 @DisplayName("MediaRecordCommandService 통합 테스트")
-class MediaRecordCommandServiceTest {
+class MediaRecordCommandServiceTest extends IntegrationTestSupport {
 
     @Autowired
     private MediaRecordCommandService mediaRecordCommandService;
 
     @Autowired
     private MediaRecordRepository mediaRecordRepository;
-    @Autowired private FireEventRepository fireEventRepository;
-    @Autowired private CameraEdgeRepository cameraEdgeRepository;
-    @Autowired private RoomRepository roomRepository;
-    @Autowired private BuildingRepository buildingRepository;
 
     private FireEvent savedFireEvent;
 
     @BeforeEach
     void setUp() {
-        // 테스트를 위한 기초 데이터 생성 (Building -> Room -> CameraEdge -> FireEvent)
-        Building building = new Building();
-        building.setBuildingName("Test Building");
-        buildingRepository.save(building);
+        Building building = createBuilding("Test Building");
+        Room room = createRoom("Test Room", null, null, building);
+        CameraEdge camera = createCamera(room, "cam-uuid-1234", "Test Cam");
 
-        Room room = new Room();
-        room.setRoomAlias("Test Room");
-        room.setBuilding(building);
-        roomRepository.save(room);
-
-        CameraEdge camera = new CameraEdge();
-        camera.setRoom(room);
-        camera.setDeviceUuid("cam-uuid-1234");
-        camera.setCameraEdgeAlias("Test Cam");
-        cameraEdgeRepository.save(camera);
-
-        FireEvent fireEvent = new FireEvent();
-        fireEvent.setCameraEdge(camera);
-        fireEvent.setDetectionType(DetectionType.FIRE);
+        FireEvent fireEvent = createFireEvent(camera);
         fireEvent.setFireCause(FireCause.기타);
         fireEvent.setRiskRank(0L);
         savedFireEvent = fireEventRepository.save(fireEvent);

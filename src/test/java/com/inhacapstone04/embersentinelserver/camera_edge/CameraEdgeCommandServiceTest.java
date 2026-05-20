@@ -1,28 +1,20 @@
 package com.inhacapstone04.embersentinelserver.camera_edge;
 
 import com.inhacapstone04.embersentinelserver.building.entity.Building;
-import com.inhacapstone04.embersentinelserver.building.repository.BuildingRepository;
 import com.inhacapstone04.embersentinelserver.camera_edge.dto.request.CameraEdgeCreateRequest;
 import com.inhacapstone04.embersentinelserver.camera_edge.dto.response.CameraEdgeResponse;
 import com.inhacapstone04.embersentinelserver.camera_edge.entity.CameraEdge;
-import com.inhacapstone04.embersentinelserver.camera_edge.repository.CameraEdgeRepository;
 import com.inhacapstone04.embersentinelserver.camera_edge.service.CameraEdgeCommandService;
 import com.inhacapstone04.embersentinelserver.common.exception.CustomException;
 import com.inhacapstone04.embersentinelserver.common.exception.ErrorCode;
 import com.inhacapstone04.embersentinelserver.room.entity.MembershipRole;
 import com.inhacapstone04.embersentinelserver.room.entity.Room;
-import com.inhacapstone04.embersentinelserver.room.entity.UserRoomMembership;
-import com.inhacapstone04.embersentinelserver.room.repository.RoomRepository;
-import com.inhacapstone04.embersentinelserver.room.repository.UserRoomMembershipRepository;
-import com.inhacapstone04.embersentinelserver.user.entity.AuthType;
+import com.inhacapstone04.embersentinelserver.support.IntegrationTestSupport;
 import com.inhacapstone04.embersentinelserver.user.entity.User;
-import com.inhacapstone04.embersentinelserver.user.entity.UserRole;
-import com.inhacapstone04.embersentinelserver.user.repository.UserRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Optional;
@@ -30,20 +22,12 @@ import java.util.Optional;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-@SpringBootTest
-@Transactional // 테스트 후 롤백 보장
+@Transactional
 @DisplayName("CameraEdgeCommandService 통합 테스트")
-class CameraEdgeCommandServiceTest {
+class CameraEdgeCommandServiceTest extends IntegrationTestSupport {
 
     @Autowired
     private CameraEdgeCommandService cameraEdgeCommandService;
-
-    // 실제 Repository 주입
-    @Autowired private CameraEdgeRepository cameraEdgeRepository;
-    @Autowired private RoomRepository roomRepository;
-    @Autowired private UserRepository userRepository;
-    @Autowired private UserRoomMembershipRepository membershipRepository;
-    @Autowired private BuildingRepository buildingRepository;
 
     // 테스트 데이터
     private User editorUser;
@@ -200,42 +184,8 @@ class CameraEdgeCommandServiceTest {
         assertThat(cameraEdgeRepository.findById(cameraInRoomA.getId())).isPresent();
     }
 
-    // --- 헬퍼 메서드 ---
-
-    private User createUser(String email, String nickname) {
-        User user = new User();
-        user.setEmail(email);
-        user.setNickname(nickname);
-        user.setAuthType(AuthType.GOOGLE);
-        user.setUserRole(UserRole.USER);
-        return userRepository.save(user);
-    }
-
-    private Building createBuilding(String name) {
-        Building building = new Building();
-        building.setBuildingName(name);
-        return buildingRepository.save(building);
-    }
-
+    // 로컬 헬퍼: floor/roomNumber 없이 Room 생성
     private Room createRoom(String alias, Building building) {
-        Room room = new Room();
-        room.setRoomAlias(alias);
-        room.setBuilding(building);
-        return roomRepository.save(room);
-    }
-
-    private void createMembership(User user, Room room, MembershipRole role) {
-        if (membershipRepository.existsByUser_IdAndRoom_Id(user.getId(), room.getId())) return;
-        UserRoomMembership membership = new UserRoomMembership(user, room);
-        membership.setRole(role);
-        membershipRepository.save(membership);
-    }
-
-    private CameraEdge createCamera(Room room, String uuid, String alias) {
-        CameraEdge camera = new CameraEdge();
-        camera.setRoom(room);
-        camera.setDeviceUuid(uuid);
-        camera.setCameraEdgeAlias(alias);
-        return cameraEdgeRepository.save(camera);
+        return createRoom(alias, null, null, building);
     }
 }

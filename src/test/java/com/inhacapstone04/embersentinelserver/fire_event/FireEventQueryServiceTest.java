@@ -1,40 +1,29 @@
 package com.inhacapstone04.embersentinelserver.fire_event;
 
 import com.inhacapstone04.embersentinelserver.building.entity.Building;
-import com.inhacapstone04.embersentinelserver.building.repository.BuildingRepository;
 import com.inhacapstone04.embersentinelserver.camera_edge.entity.CameraEdge;
-import com.inhacapstone04.embersentinelserver.camera_edge.repository.CameraEdgeRepository;
 import com.inhacapstone04.embersentinelserver.common.exception.CustomException;
 import com.inhacapstone04.embersentinelserver.common.exception.ErrorCode;
 import com.inhacapstone04.embersentinelserver.common.response.PageResponse;
 import com.inhacapstone04.embersentinelserver.fire_event.dto.FireEventSimpleDTO;
 import com.inhacapstone04.embersentinelserver.fire_event.dto.response.FireEventDetailResponse;
 import com.inhacapstone04.embersentinelserver.fire_event.dto.response.FireEventWatchResponse;
-import com.inhacapstone04.embersentinelserver.fire_event.entity.DetectionType;
 import com.inhacapstone04.embersentinelserver.fire_event.entity.FireCause;
 import com.inhacapstone04.embersentinelserver.fire_event.entity.FireEvent;
-import com.inhacapstone04.embersentinelserver.fire_event.repository.FireEventRepository;
 import com.inhacapstone04.embersentinelserver.fire_event.service.FireEventQueryService;
 import com.inhacapstone04.embersentinelserver.media.entity.MediaRecord;
 import com.inhacapstone04.embersentinelserver.media.entity.MediaStream;
 import com.inhacapstone04.embersentinelserver.media.entity.StreamingStatus;
 import com.inhacapstone04.embersentinelserver.media.repository.MediaRecordRepository;
-import com.inhacapstone04.embersentinelserver.media.repository.MediaStreamRepository;
 import com.inhacapstone04.embersentinelserver.room.entity.MembershipRole;
 import com.inhacapstone04.embersentinelserver.room.entity.Room;
-import com.inhacapstone04.embersentinelserver.room.entity.UserRoomMembership;
-import com.inhacapstone04.embersentinelserver.room.repository.RoomRepository;
-import com.inhacapstone04.embersentinelserver.room.repository.UserRoomMembershipRepository;
-import com.inhacapstone04.embersentinelserver.user.entity.AuthType;
+import com.inhacapstone04.embersentinelserver.support.IntegrationTestSupport;
 import com.inhacapstone04.embersentinelserver.user.entity.User;
-import com.inhacapstone04.embersentinelserver.user.entity.UserRole;
-import com.inhacapstone04.embersentinelserver.user.repository.UserRepository;
 import jakarta.persistence.EntityManager;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.transaction.annotation.Transactional;
@@ -42,22 +31,12 @@ import org.springframework.transaction.annotation.Transactional;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-@SpringBootTest
 @Transactional
 @DisplayName("FireEventQueryService 통합 테스트")
-class FireEventQueryServiceTest {
+class FireEventQueryServiceTest extends IntegrationTestSupport {
 
     @Autowired private FireEventQueryService fireEventQueryService;
-
-    @Autowired private UserRepository userRepository;
-    @Autowired private BuildingRepository buildingRepository;
-    @Autowired private RoomRepository roomRepository;
-    @Autowired private UserRoomMembershipRepository membershipRepository;
-    @Autowired private CameraEdgeRepository cameraEdgeRepository;
-    @Autowired private FireEventRepository fireEventRepository;
-    @Autowired private MediaStreamRepository mediaStreamRepository;
     @Autowired private MediaRecordRepository mediaRecordRepository;
-
     @Autowired private EntityManager em;
 
     private User memberUser;
@@ -307,48 +286,18 @@ class FireEventQueryServiceTest {
                 .hasFieldOrPropertyWithValue("code", ErrorCode.NOT_FOUND_BY_ID);
     }
 
-    // --- Helper Methods ---
-
-    private User createUser(String email, String nickname) {
-        User user = new User();
-        user.setEmail(email);
-        user.setNickname(nickname);
-        user.setAuthType(AuthType.GOOGLE);
-        user.setUserRole(UserRole.USER);
-        return userRepository.save(user);
-    }
-
-    private Building createBuilding(String name) {
-        Building building = new Building();
-        building.setBuildingName(name);
-        return buildingRepository.save(building);
-    }
+    // --- 로컬 헬퍼 (부모와 시그니처가 다른 것만 유지) ---
 
     private Room createRoom(String alias, Building building) {
-        Room room = new Room();
-        room.setRoomAlias(alias);
-        room.setBuilding(building);
-        return roomRepository.save(room);
+        return createRoom(alias, null, null, building);
     }
 
-    private void createMembership(User user, Room room, MembershipRole role) {
-        UserRoomMembership membership = new UserRoomMembership(user, room);
-        membership.setRole(role);
-        membershipRepository.save(membership);
-    }
-
-    private CameraEdge createCamera(Room room, String uuid, String alias) {
-        CameraEdge camera = new CameraEdge();
-        camera.setRoom(room);
-        camera.setDeviceUuid(uuid);
-        camera.setCameraEdgeAlias(alias);
-        return cameraEdgeRepository.save(camera);
-    }
-
-    private FireEvent createFireEvent(CameraEdge camera) {
+    // 이 테스트 전용: FireCause/RiskRank 포함
+    @Override
+    protected FireEvent createFireEvent(CameraEdge camera) {
         FireEvent event = new FireEvent();
         event.setCameraEdge(camera);
-        event.setDetectionType(DetectionType.FIRE);
+        event.setDetectionType(com.inhacapstone04.embersentinelserver.fire_event.entity.DetectionType.FIRE);
         event.setFireCause(FireCause.기타);
         event.setRiskRank(1L);
         return fireEventRepository.save(event);

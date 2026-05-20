@@ -10,6 +10,7 @@ import org.springframework.stereotype.Component;
 import java.nio.charset.StandardCharsets;
 import java.security.Key;
 import java.util.Date;
+import java.util.UUID;
 
 @Component
 public class JwtUtil {
@@ -49,6 +50,7 @@ public class JwtUtil {
 
         return Jwts.builder()
                 .claim("userId", userId)
+                .setId(UUID.randomUUID().toString())
                 .setIssuedAt(now)
                 .setExpiration(expiryDate)
                 .signWith(secretKey)

@@ -1,38 +1,26 @@
 package com.inhacapstone04.embersentinelserver.room;
 
 import com.inhacapstone04.embersentinelserver.building.entity.Building;
-import com.inhacapstone04.embersentinelserver.building.repository.BuildingRepository;
 import com.inhacapstone04.embersentinelserver.camera_edge.dto.CameraEdgeWithIsFireDTO;
 import com.inhacapstone04.embersentinelserver.camera_edge.entity.CameraEdge;
-import com.inhacapstone04.embersentinelserver.camera_edge.repository.CameraEdgeRepository;
 import com.inhacapstone04.embersentinelserver.common.exception.CustomException;
 import com.inhacapstone04.embersentinelserver.common.exception.ErrorCode;
 import com.inhacapstone04.embersentinelserver.common.response.PageResponse;
-import com.inhacapstone04.embersentinelserver.fire_event.entity.DetectionType;
 import com.inhacapstone04.embersentinelserver.fire_event.entity.FireEvent;
+import com.inhacapstone04.embersentinelserver.media.entity.StreamingStatus;
 import com.inhacapstone04.embersentinelserver.room.dto.response.RoomDetailResponse;
 import com.inhacapstone04.embersentinelserver.room.entity.MembershipRole;
-import com.inhacapstone04.embersentinelserver.fire_event.repository.FireEventRepository;
-import com.inhacapstone04.embersentinelserver.media.entity.MediaStream;
-import com.inhacapstone04.embersentinelserver.media.entity.StreamingStatus;
-import com.inhacapstone04.embersentinelserver.media.repository.MediaStreamRepository;
 import com.inhacapstone04.embersentinelserver.room.dto.response.RoomDashboardResponse;
 import com.inhacapstone04.embersentinelserver.room.dto.RoomStatisticsDTO;
 import com.inhacapstone04.embersentinelserver.room.dto.response.SingleRoomResponse;
 import com.inhacapstone04.embersentinelserver.room.entity.Room;
-import com.inhacapstone04.embersentinelserver.room.entity.UserRoomMembership;
-import com.inhacapstone04.embersentinelserver.room.repository.RoomRepository;
-import com.inhacapstone04.embersentinelserver.room.repository.UserRoomMembershipRepository;
 import com.inhacapstone04.embersentinelserver.room.service.RoomQueryService;
-import com.inhacapstone04.embersentinelserver.user.entity.AuthType;
+import com.inhacapstone04.embersentinelserver.support.IntegrationTestSupport;
 import com.inhacapstone04.embersentinelserver.user.entity.User;
-import com.inhacapstone04.embersentinelserver.user.entity.UserRole;
-import com.inhacapstone04.embersentinelserver.user.repository.UserRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.transaction.annotation.Transactional;
@@ -42,22 +30,12 @@ import java.util.List;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-@SpringBootTest
 @Transactional
 @DisplayName("RoomQueryService 통합 테스트")
-class RoomQueryServiceTest {
+class RoomQueryServiceTest extends IntegrationTestSupport {
 
     @Autowired
     private RoomQueryService roomQueryService;
-
-    // --- 테스트 데이터 세팅을 위한 Repository ---
-    @Autowired private UserRepository userRepository;
-    @Autowired private BuildingRepository buildingRepository;
-    @Autowired private RoomRepository roomRepository;
-    @Autowired private UserRoomMembershipRepository membershipRepository;
-    @Autowired private CameraEdgeRepository cameraEdgeRepository;
-    @Autowired private FireEventRepository fireEventRepository;
-    @Autowired private MediaStreamRepository mediaStreamRepository;
 
     private User testUser1;
     private User testUser2;
@@ -249,63 +227,6 @@ class RoomQueryServiceTest {
                 .hasFieldOrPropertyWithValue("code", ErrorCode.NOT_FOUND_BY_ID);
     }
 
-
-    // --- 테스트용 헬퍼 메서드 ---
-
-    private User createUser(String email, String nickname) {
-        User user = new User();
-        user.setEmail(email);
-        user.setNickname(nickname);
-        user.setUserRole(UserRole.USER);
-        user.setAuthType(AuthType.GOOGLE);
-        return userRepository.save(user);
-    }
-
-    private Building createBuilding(String name) {
-        Building building = new Building();
-        building.setBuildingName(name);
-        return buildingRepository.save(building);
-    }
-
-    // Floor와 RoomNumber를 받도록 수정됨
-    private Room createRoom(String alias, String floor, String roomNum, Building building) {
-        Room room = new Room();
-        room.setRoomAlias(alias);
-        room.setBuildingLocationFloor(floor);
-        room.setRoomNumber(roomNum);
-        room.setBuilding(building);
-        return roomRepository.save(room);
-    }
-
-    private void createMembership(User user, Room room, MembershipRole role) {
-        UserRoomMembership membership = new UserRoomMembership(user, room);
-        membership.setRole(role); // 널 제약조건 해결
-        room.getUserMemberships().add(membership); // <-- 이 줄을 추가하세요.
-
-        membershipRepository.save(membership);
-    }
-
-    private CameraEdge createCamera(Room room, String uuid, String alias) {
-        CameraEdge camera = new CameraEdge();
-        camera.setRoom(room);
-        camera.setDeviceUuid(uuid); // (CameraEdge 엔티티에 deviceUuid 필드가 있다고 가정)
-        camera.setCameraEdgeAlias(alias);
-        return cameraEdgeRepository.save(camera);
-    }
-
-    private FireEvent createFireEvent(CameraEdge camera) {
-        FireEvent event = new FireEvent();
-        event.setCameraEdge(camera);
-        event.setDetectionType(DetectionType.FIRE);
-        return fireEventRepository.save(event);
-    }
-
-    private void createMediaStream(FireEvent event, StreamingStatus status) {
-        MediaStream stream = new MediaStream();
-        stream.setFireEvent(event);
-        stream.setStreamingStatus(status);
-        mediaStreamRepository.save(stream);
-    }
 
     // [헬퍼] 대시보드 응답에서 특정 방 통계 찾기
     private RoomStatisticsDTO findStats(RoomDashboardResponse response, Long roomId) {

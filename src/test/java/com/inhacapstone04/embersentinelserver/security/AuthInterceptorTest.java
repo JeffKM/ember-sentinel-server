@@ -4,6 +4,7 @@ import com.inhacapstone04.embersentinelserver.common.exception.CustomException;
 import com.inhacapstone04.embersentinelserver.common.exception.ErrorCode;
 import com.inhacapstone04.embersentinelserver.common.util.JwtUtil;
 import com.inhacapstone04.embersentinelserver.security.interceptor.AuthInterceptor;
+import com.inhacapstone04.embersentinelserver.support.IntegrationTestSupport;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.security.Keys;
 import org.junit.jupiter.api.BeforeEach;
@@ -11,7 +12,6 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.mock.web.MockHttpServletResponse;
 
@@ -22,9 +22,8 @@ import java.util.Date;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-@SpringBootTest // @Autowired로 실제 빈들을 주입받기 위해 사용
 @DisplayName("AuthInterceptor 테스트")
-class AuthInterceptorTest {
+class AuthInterceptorTest extends IntegrationTestSupport {
 
     @Autowired
     private AuthInterceptor authInterceptor; // 테스트 대상

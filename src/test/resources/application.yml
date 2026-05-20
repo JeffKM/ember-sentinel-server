@@ -1,0 +1,60 @@
+spring:
+  datasource:
+    url: jdbc:tc:postgresql:16:///test
+    driver-class-name: org.testcontainers.jdbc.ContainerDatabaseDriver
+  jpa:
+    hibernate:
+      ddl-auto: create-drop
+    show-sql: false
+    properties:
+      hibernate:
+        format_sql: false
+  data:
+    redis:
+      host: localhost
+      port: 6379
+    web:
+      pageable:
+        one-indexed-parameters: true
+
+jwt:
+  secret-key: test-jwt-secret-key-for-testing-purposes-minimum-256-bits-long-enough-here
+  access-token-expiration-ms: 3600000
+  refresh-token-expiration-ms: 604800000
+
+livekit:
+  api:
+    key: test-key
+    secret: test-secret-minimum-length-for-hmac
+    url: http://localhost:7880
+
+aws:
+  region: us-east-1
+  s3:
+    bucket: test-bucket
+    endpoint: http://localhost:9000
+    access-key: test-access-key
+    secret-key: test-secret-key
+    path-style-access: true
+
+cloud:
+  aws:
+    s3:
+      bucket: test-bucket
+    region:
+      static: us-east-1
+
+fcm:
+  enabled: false
+  key-path: ""
+
+oauth:
+  google:
+    userinfo-uri: https://www.googleapis.com/oauth2/v3/userinfo
+  kakao:
+    userinfo-uri: https://kapi.kakao.com/v2/user/me
+
+logging:
+  level:
+    root: WARN
+    org.testcontainers: INFO
