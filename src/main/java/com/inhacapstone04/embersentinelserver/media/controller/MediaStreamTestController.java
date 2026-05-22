@@ -4,10 +4,12 @@ import com.inhacapstone04.embersentinelserver.fire_event.dto.response.FireEventS
 import com.inhacapstone04.embersentinelserver.fire_event.dto.response.FireEventWatchResponse;
 import com.inhacapstone04.embersentinelserver.media.service.MediaStreamTestService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
+@ConditionalOnProperty(name = "livekit.enabled", havingValue = "true", matchIfMissing = true)
 @RequiredArgsConstructor
 @RequestMapping("/media/test")
 public class MediaStreamTestController {

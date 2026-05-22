@@ -6,11 +6,13 @@ import com.inhacapstone04.embersentinelserver.fire_event.dto.response.FireEventS
 import com.inhacapstone04.embersentinelserver.fire_event.dto.response.FireEventWatchResponse;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Service;
 
 import java.util.UUID;
 
 @Service
+@ConditionalOnProperty(name = "livekit.enabled", havingValue = "true", matchIfMissing = true)
 @RequiredArgsConstructor
 @Slf4j
 public class MediaStreamTestService {

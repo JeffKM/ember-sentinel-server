@@ -1,0 +1,79 @@
+# ===================================================
+# Ember Sentinel Server — PaaS 배포 프로필 (Render/Railway)
+# 활성화: SPRING_PROFILES_ACTIVE=render
+# LiveKit/Egress 비활성화, 환경변수 기반 설정
+# ===================================================
+
+spring:
+  # PostgreSQL — 환경변수 주입 (Render Blueprint 또는 Railway Plugin)
+  datasource:
+    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/ember_sentinel}
+    username: ${SPRING_DATASOURCE_USERNAME:ember}
+    password: ${SPRING_DATASOURCE_PASSWORD:password}
+    driver-class-name: org.postgresql.Driver
+
+  # JPA
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: false
+    properties:
+      hibernate:
+        format_sql: false
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+
+  # Redis — 환경변수 주입
+  data:
+    redis:
+      url: ${SPRING_DATA_REDIS_URL:redis://localhost:6379}
+
+# JWT — 환경변수 필수
+jwt:
+  secret-key: ${JWT_SECRET_KEY:change-me-in-production-minimum-256-bits-long-enough-for-hmac}
+  access-token-expiration-ms: 3600000     # 1시간
+  refresh-token-expiration-ms: 604800000  # 7일
+
+# LiveKit — PaaS에서는 비활성화 (UDP 포트 불가)
+livekit:
+  enabled: ${LIVEKIT_ENABLED:false}
+  api:
+    key: ${LIVEKIT_API_KEY:disabled}
+    secret: ${LIVEKIT_API_SECRET:disabled}
+    url: ${LIVEKIT_API_URL:http://localhost:7880}
+
+# AWS S3 — 기존 녹화 재생용 (Presigned URL)
+aws:
+  region: ${AWS_REGION:us-west-2}
+  s3:
+    bucket: ${AWS_S3_BUCKET:ember-sentinel-recordings}
+    access-key: ${AWS_ACCESS_KEY_ID:}
+    secret-key: ${AWS_SECRET_ACCESS_KEY:}
+
+cloud:
+  aws:
+    s3:
+      bucket: ${AWS_S3_BUCKET:ember-sentinel-recordings}
+    region:
+      static: ${AWS_REGION:us-west-2}
+
+# FCM — 환경변수로 제어 (키 파일 없으면 비활성화)
+fcm:
+  enabled: ${FCM_ENABLED:false}
+  key-path: ${FCM_KEY_PATH:}
+
+# 로깅 — PaaS 환경 최적화
+logging:
+  level:
+    root: INFO
+    com.inhacapstone04: INFO
+    org.hibernate.SQL: WARN
+
+# Actuator — 헬스체크 엔드포인트 활성화
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+  endpoint:
+    health:
+      show-details: never

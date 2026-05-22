@@ -15,23 +15,40 @@ import com.inhacapstone04.embersentinelserver.fire_event.repository.FireEventRep
 import com.inhacapstone04.embersentinelserver.media.entity.MediaStream;
 import com.inhacapstone04.embersentinelserver.media.entity.StreamingStatus;
 import com.inhacapstone04.embersentinelserver.media.repository.MediaStreamRepository;
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.Optional;
+
 @Service
-@RequiredArgsConstructor
 @Slf4j
 public class FireEventCommandService {
 
     private final FireEventRepository fireEventRepository;
     private final CameraEdgeRepository cameraEdgeRepository;
     private final MediaStreamRepository mediaStreamRepository;
-
-    private final LiveKitUtil liveKitUtil;
     private final FcmService fcmService;
-    private final LiveKitManagementService liveKitWebhookManagementService;
+
+    // LiveKit 비활성화 시 빈이 등록되지 않으므로 Optional로 주입
+    private final Optional<LiveKitUtil> liveKitUtil;
+    private final Optional<LiveKitManagementService> liveKitManagementService;
+
+    public FireEventCommandService(
+            FireEventRepository fireEventRepository,
+            CameraEdgeRepository cameraEdgeRepository,
+            MediaStreamRepository mediaStreamRepository,
+            FcmService fcmService,
+            Optional<LiveKitUtil> liveKitUtil,
+            Optional<LiveKitManagementService> liveKitManagementService
+    ) {
+        this.fireEventRepository = fireEventRepository;
+        this.cameraEdgeRepository = cameraEdgeRepository;
+        this.mediaStreamRepository = mediaStreamRepository;
+        this.fcmService = fcmService;
+        this.liveKitUtil = liveKitUtil;
+        this.liveKitManagementService = liveKitManagementService;
+    }
 
     /**
      * 화재 감지 시 이벤트를 생성하고 스트리밍 환경을 구축합니다. (Publisher용)
@@ -69,21 +86,24 @@ public class FireEventCommandService {
         mediaStream.setStreamingStatus(StreamingStatus.PENDING);
         mediaStreamRepository.save(mediaStream);
 
-        // 5. [위임] LiveKit Room 생성 및 Egress 시작 요청
-        liveKitWebhookManagementService.createRoomAndStartEgress(livekitRoomName);
+        // 5. [위임] LiveKit Room 생성 및 Egress 시작 요청 (LiveKit 비활성화 시 스킵)
+        liveKitManagementService.ifPresentOrElse(
+                service -> service.createRoomAndStartEgress(livekitRoomName),
+                () -> log.warn("LiveKit 비활성화 상태 — Room 생성 및 Egress 시작을 스킵합니다.")
+        );
 
-        // 6. Publisher Token 생성
+        // 6. Publisher Token 생성 (LiveKit 비활성화 시 빈 토큰 반환)
         String metadata = "{\"type\":\"PUBLISHER\", \"cameraId\":" + camera.getId() +
                 ", \"fireEventId\":" + fireEvent.getId() +
                 ", \"roomId\":" + camera.getRoom().getId() + "}";
 
-        String token = liveKitUtil.createToken(
+        String token = liveKitUtil.map(util -> util.createToken(
                 livekitRoomName,
                 "cam_" + camera.getId(),
                 camera.getCameraEdgeAlias(),
                 metadata,
                 true, true
-        );
+        )).orElse("");
 
         // 7. FCM 알림 발송 (비동기)
         fcmService.sendFireAlert(

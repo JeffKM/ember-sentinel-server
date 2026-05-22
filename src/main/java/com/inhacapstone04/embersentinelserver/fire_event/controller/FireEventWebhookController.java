@@ -3,10 +3,12 @@ package com.inhacapstone04.embersentinelserver.fire_event.controller;
 import com.inhacapstone04.embersentinelserver.common.service.LiveKitWebhookEventSeperationService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
+@ConditionalOnProperty(name = "livekit.enabled", havingValue = "true", matchIfMissing = true)
 @RequiredArgsConstructor
 @Slf4j
 public class FireEventWebhookController {

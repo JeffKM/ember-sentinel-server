@@ -1,0 +1,56 @@
+# ==============================================
+# Render Blueprint — Ember Sentinel Server
+# 배포: render.com > New > Blueprint > GitHub 레포 연결
+# ==============================================
+
+services:
+  # --- API 서버 ---
+  - type: web
+    name: ember-sentinel-api
+    runtime: docker
+    dockerfilePath: ./Dockerfile.render
+    dockerContext: .
+    plan: starter  # $7/월 (512MB RAM, 0.5 CPU)
+    region: oregon
+    healthCheckPath: /actuator/health
+    envVars:
+      - key: SPRING_PROFILES_ACTIVE
+        value: render
+      - key: SPRING_DATASOURCE_URL
+        fromDatabase:
+          name: ember-sentinel-db
+          property: connectionString
+      - key: SPRING_DATASOURCE_USERNAME
+        fromDatabase:
+          name: ember-sentinel-db
+          property: user
+      - key: SPRING_DATASOURCE_PASSWORD
+        fromDatabase:
+          name: ember-sentinel-db
+          property: password
+      - key: SPRING_DATA_REDIS_URL
+        fromService:
+          type: redis
+          name: ember-sentinel-redis
+          property: connectionString
+      - key: JWT_SECRET_KEY
+        generateValue: true
+      - key: LIVEKIT_ENABLED
+        value: "false"
+      - key: FCM_ENABLED
+        value: "false"
+
+  # --- Redis ---
+  - type: redis
+    name: ember-sentinel-redis
+    plan: starter  # $7/월 (25MB)
+    maxmemoryPolicy: allkeys-lru
+    ipAllowList: []  # 내부 서비스만 접근
+
+# --- PostgreSQL ---
+databases:
+  - name: ember-sentinel-db
+    plan: starter  # $7/월 (256MB RAM, 1GB Storage)
+    databaseName: ember_sentinel
+    user: ember
+    region: oregon

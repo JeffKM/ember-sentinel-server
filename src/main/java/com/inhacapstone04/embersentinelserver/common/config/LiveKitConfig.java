@@ -4,10 +4,12 @@ import io.livekit.server.EgressServiceClient;
 import io.livekit.server.RoomServiceClient;
 import io.livekit.server.WebhookReceiver;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
 @Configuration
+@ConditionalOnProperty(name = "livekit.enabled", havingValue = "true", matchIfMissing = true)
 public class LiveKitConfig {
 
     @Value("${livekit.api.key}")

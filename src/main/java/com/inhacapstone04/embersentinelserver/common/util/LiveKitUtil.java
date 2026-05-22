@@ -2,9 +2,11 @@ package com.inhacapstone04.embersentinelserver.common.util;
 
 import io.livekit.server.*;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
 
 @Component
+@ConditionalOnProperty(name = "livekit.enabled", havingValue = "true", matchIfMissing = true)
 public class LiveKitUtil {
 
     @Value("${livekit.api.key}")

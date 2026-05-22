@@ -9,19 +9,31 @@ import com.inhacapstone04.embersentinelserver.common.service.LiveKitManagementSe
 import com.inhacapstone04.embersentinelserver.media.entity.MediaStream;
 import com.inhacapstone04.embersentinelserver.media.entity.StreamingStatus;
 import com.inhacapstone04.embersentinelserver.media.repository.MediaStreamRepository;
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.Optional;
+
 @Service
-@RequiredArgsConstructor
 @Slf4j
 public class FireEventWebhookService {
 
     private final MediaStreamRepository mediaStreamRepository;
     private final ObjectMapper objectMapper;
-    private final LiveKitManagementService liveKitManagementService;
+
+    // LiveKit 비활성화 시 빈이 등록되지 않으므로 Optional로 주입
+    private final Optional<LiveKitManagementService> liveKitManagementService;
+
+    public FireEventWebhookService(
+            MediaStreamRepository mediaStreamRepository,
+            ObjectMapper objectMapper,
+            Optional<LiveKitManagementService> liveKitManagementService
+    ) {
+        this.mediaStreamRepository = mediaStreamRepository;
+        this.objectMapper = objectMapper;
+        this.liveKitManagementService = liveKitManagementService;
+    }
 
     /**
      * [Webhook] 참여자 입장(participant_joined) 처리
@@ -77,8 +89,8 @@ public class FireEventWebhookService {
                 }
 
                 // 2. [위임] LiveKit Room 강제 삭제 요청 (Egress도 자동 종료됨)
-                // DB 로직이 끝난 후 인프라 정리 요청
-                liveKitManagementService.deleteRoom(roomName);
+                // DB 로직이 끝난 후 인프라 정리 요청 (LiveKit 비활성화 시 스킵)
+                liveKitManagementService.ifPresent(service -> service.deleteRoom(roomName));
             }
 
         } catch (JsonProcessingException e) {
