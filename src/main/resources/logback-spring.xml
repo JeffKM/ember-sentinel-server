@@ -1,0 +1,62 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<configuration>
+
+    <property name="LOG_DIR" value="./logs" />
+    <property name="LOG_FILE" value="${LOG_DIR}/ember-sentinel-server" />
+
+    <!-- ===== 콘솔 출력 (사람이 읽기 쉬운 형식) ===== -->
+    <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
+        <encoder>
+            <pattern>%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n</pattern>
+        </encoder>
+    </appender>
+
+    <!-- ===== JSON 콘솔 출력 (LogstashEncoder) ===== -->
+    <appender name="JSON_CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
+        <encoder class="net.logstash.logback.encoder.LogstashEncoder">
+            <includeMdcKeyName>requestId</includeMdcKeyName>
+            <timestampPattern>yyyy-MM-dd'T'HH:mm:ss.SSSZ</timestampPattern>
+        </encoder>
+    </appender>
+
+    <!-- ===== JSON 파일 출력 (일별 로테이션, 최대 30일) ===== -->
+    <appender name="JSON_FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <file>${LOG_FILE}.json</file>
+        <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
+            <fileNamePattern>${LOG_FILE}.%d{yyyy-MM-dd}.json</fileNamePattern>
+            <maxHistory>30</maxHistory>
+            <totalSizeCap>1GB</totalSizeCap>
+        </rollingPolicy>
+        <encoder class="net.logstash.logback.encoder.LogstashEncoder">
+            <includeMdcKeyName>requestId</includeMdcKeyName>
+            <timestampPattern>yyyy-MM-dd'T'HH:mm:ss.SSSZ</timestampPattern>
+        </encoder>
+    </appender>
+
+    <!-- ===== local 프로필: 콘솔에 사람이 읽기 좋은 형식 ===== -->
+    <springProfile name="local">
+        <root level="INFO">
+            <appender-ref ref="CONSOLE" />
+        </root>
+        <logger name="com.inhacapstone04" level="DEBUG" />
+        <logger name="org.hibernate.SQL" level="DEBUG" />
+    </springProfile>
+
+    <!-- ===== dev 프로필: JSON 콘솔 + 파일 ===== -->
+    <springProfile name="dev">
+        <root level="INFO">
+            <appender-ref ref="JSON_CONSOLE" />
+            <appender-ref ref="JSON_FILE" />
+        </root>
+        <logger name="com.inhacapstone04" level="DEBUG" />
+    </springProfile>
+
+    <!-- ===== prod/render 프로필: JSON 콘솔 (PaaS는 stdout 수집) ===== -->
+    <springProfile name="prod | render">
+        <root level="INFO">
+            <appender-ref ref="JSON_CONSOLE" />
+        </root>
+        <logger name="com.inhacapstone04" level="INFO" />
+    </springProfile>
+
+</configuration>

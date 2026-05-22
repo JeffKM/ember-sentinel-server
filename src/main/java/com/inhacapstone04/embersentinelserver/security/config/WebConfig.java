@@ -68,7 +68,10 @@ public class WebConfig implements WebMvcConfigurer {
                         "/livekit/webhook",
 
                         // --- media streaming test ---
-                        "/media/test/**"
+                        "/media/test/**",
+
+                        // --- Actuator 메트릭 엔드포인트 ---
+                        "/actuator/**"
                 );
 
         // 2. 디바이스 API Key 인증 인터셉터 (/embedded/** 전용)

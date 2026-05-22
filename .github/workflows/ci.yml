@@ -12,6 +12,7 @@ jobs:
     permissions:
       contents: read
       checks: write
+      pull-requests: write
 
     steps:
       - name: Checkout the code
@@ -43,6 +44,15 @@ jobs:
         if: success() || failure()
         with:
           report_paths: '**/build/test-results/test/TEST-*.xml'
+
+      - name: JaCoCo Coverage Report to PR
+        uses: madrapps/jacoco-report@v1.7
+        if: github.event_name == 'pull_request'
+        with:
+          paths: build/reports/jacoco/test/jacocoTestReport.xml
+          token: ${{ secrets.GITHUB_TOKEN }}
+          min-coverage-overall: 70
+          title: "코드 커버리지 리포트"
 
       - name: Upload JaCoCo Coverage Report
         uses: actions/upload-artifact@v4

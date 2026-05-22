@@ -60,3 +60,30 @@ oauth:
 
 fcm:
   key-path: ${FCM_KEY_PATH:secrets/ember-sentinel-firebase-admin-sdk.json}
+
+# Actuator 메트릭 엔드포인트
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,prometheus
+  endpoint:
+    health:
+      show-details: when-authorized
+    info:
+      enabled: true
+  metrics:
+    distribution:
+      percentiles-histogram:
+        http.server.requests: true
+      percentiles:
+        http.server.requests: 0.5, 0.95, 0.99
+      slo:
+        http.server.requests: 100ms, 500ms, 1000ms
+  info:
+    git:
+      mode: full
+    java:
+      enabled: true
+    os:
+      enabled: true
